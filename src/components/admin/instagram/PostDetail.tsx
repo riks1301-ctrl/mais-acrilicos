@@ -3,6 +3,7 @@
 import { ImageLibrary } from "@/components/admin/instagram/ImageLibrary";
 import { MetaPublishPanel } from "@/components/admin/instagram/MetaPublishPanel";
 import { PostPerformancePanel } from "@/components/admin/instagram/PostPerformancePanel";
+import { PostArtPanel } from "@/components/admin/instagram/PostArtPanel";
 import { PostCarouselPanel } from "@/components/admin/instagram/PostCarouselPanel";
 import { PostVisualPanel } from "@/components/admin/instagram/PostVisualPanel";
 import { ContentTypeBadge, FormatBadge, ScoreBadge, StatusBadge } from "@/components/admin/instagram/StatusBadge";
@@ -179,6 +180,22 @@ export function PostDetail({ id }: { id: string }) {
       </div>
 
       <PostCarouselPanel postId={id} initialCarousel={post.carousel} onRefresh={load} />
+
+      <PostArtPanel
+        postId={id}
+        visualFormat={post.visualFormat}
+        artFiles={post.postImages
+          .filter((pi) => ["cover", "slide", "art"].includes(pi.role))
+          .map((pi) => ({
+            imageId: pi.image.id,
+            url: pi.image.url,
+            role: pi.role,
+            order: pi.order,
+            format: post.visualFormat ?? "1080x1080",
+            source: (pi.image as { isRealPhoto?: boolean }).isRealPhoto ? "real_photo" : "brand_template",
+          }))}
+        onRefresh={load}
+      />
 
       {post.status === "PUBLISHED" && <PostPerformancePanel postId={id} status={post.status} />}
 

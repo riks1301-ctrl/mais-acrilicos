@@ -24,10 +24,13 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "jose": "^5.9.6",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.469.0",
     "next": "14.2.35",
+    "pdf-lib": "^1.17.1",
     "react": "^18",
     "react-dom": "^18",
+    "sharp": "^0.35.1",
     "zod": "^3.24.1"
   },
   "devDependencies": {

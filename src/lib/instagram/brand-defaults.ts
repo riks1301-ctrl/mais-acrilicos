@@ -50,6 +50,11 @@ export const DEFAULT_BRAND_CONFIG: Omit<Prisma.InstagramBrandConfigCreateInput, 
     background: "#f8fafc",
     text: "#0f172a",
   },
+  brandFonts: {
+    heading: "Arial, Helvetica, sans-serif",
+    body: "Arial, Helvetica, sans-serif",
+  },
+  artTemplateSet: "carousel",
   visualGuidelines: [
     "Fotos reais de produção sempre que possível",
     "Mockups e conceitos devem ser marcados como tal",

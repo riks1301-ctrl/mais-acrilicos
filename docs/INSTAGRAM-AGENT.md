@@ -328,3 +328,47 @@ Métricas negadas pela API ficam `null` e entram em `unavailableMetrics` — nun
 - Métricas demoram a aparecer após publicação (até 24–48h em alguns casos)
 - Comparativo carrossel vs feed só com ambos publicados e sincronizados
 - Orçamentos reais (WhatsApp) não vêm da API — use engajamento em posts com CTA wa.me como proxy
+
+---
+
+## Etapa 7 — Gerador automático de artes
+
+### O que faz
+
+- **Biblioteca da marca:** logo, cores, fontes e template padrão em `/admin/instagram/marca`
+- **Motor visual:** prioridade fotos reais → templates da marca → IA (não automática)
+- **Dimensões:** 1080×1080, 1080×1350, 1080×1920
+- **Templates:** carrossel, oferta, bastidores, institucional
+- **Botão:** `Gerar arte completa` no detalhe do post (após carrossel/ideia)
+- **Exportação:** PNG (ZIP), JPG (ZIP), PDF
+- **Canva:** `exportJson.canvaSpec` preparado para integração futura
+
+### Fluxo recomendado
+
+1. Configure marca (cores, fontes, logo URL)
+2. Suba fotos reais em **Imagens**
+3. Gere ideias + legendas + carrossel (texto)
+4. Clique **Gerar arte completa**
+5. Baixe ZIP/PDF para revisão antes de aprovar
+
+### APIs
+
+| Rota | Função |
+|------|--------|
+| `POST /api/admin/instagram/posts/[id]/art/generate` | Renderiza slides e salva na biblioteca |
+| `GET /api/admin/instagram/posts/[id]/art/export?format=zip\|jpg\|pdf` | Download dos arquivos |
+
+### Migration
+
+```bash
+npx prisma migrate deploy
+```
+
+Adiciona `brandFonts` e `artTemplateSet` em `InstagramBrandConfig`.
+
+### Limitações (v1)
+
+- Render server-side com Sharp (sem editor WYSIWYG)
+- Logo remoto via URL só se estiver em `/uploads/instagram`
+- IA de imagem não é chamada automaticamente
+- Uploads na Vercel são efêmeros — use S3/R2 em produção

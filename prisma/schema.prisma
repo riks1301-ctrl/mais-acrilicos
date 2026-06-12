@@ -255,6 +255,8 @@ model InstagramBrandConfig {
   localHashtags      String[]
   logoUrl            String?
   brandColors        Json?
+  brandFonts         Json?
+  artTemplateSet     String            @default("carousel")
   visualGuidelines   String?           @db.Text
   publicationMode    IgPublicationMode @default(MANUAL)
   metaConnected      Boolean           @default(false)

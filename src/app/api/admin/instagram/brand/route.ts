@@ -28,6 +28,8 @@ export async function PUT(req: Request) {
       logoUrl: body.logoUrl || null,
       visualGuidelines: body.visualGuidelines || null,
       brandColors: body.brandColors ?? undefined,
+      brandFonts: body.brandFonts ?? undefined,
+      artTemplateSet: body.artTemplateSet ?? "carousel",
     };
 
     const existing = await prisma.instagramBrandConfig.findFirst({ orderBy: { createdAt: "asc" } });

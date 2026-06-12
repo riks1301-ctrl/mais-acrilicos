@@ -23,6 +23,13 @@ export const brandConfigSchema = z.object({
       text: z.string().optional(),
     })
     .optional(),
+  brandFonts: z
+    .object({
+      heading: z.string().min(2),
+      body: z.string().min(2),
+    })
+    .optional(),
+  artTemplateSet: z.enum(["carousel", "oferta", "bastidores", "institucional"]).optional(),
   visualGuidelines: z.string().optional(),
   publicationMode: z.enum(["MANUAL", "AUTO"]).default("MANUAL"),
 });

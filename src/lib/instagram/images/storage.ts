@@ -55,6 +55,42 @@ export function validateImageFile(file: File): { ok: true } | { ok: false; error
   return { ok: true };
 }
 
+export async function saveImageBuffer(
+  buffer: Buffer,
+  mime: string,
+  filenamePrefix: string
+): Promise<{
+  storageKey: string;
+  publicUrl: string;
+  mimeType: string;
+  fileSize: number;
+  filename: string;
+}> {
+  const validated = validateImageBuffer(buffer, mime);
+  if (!validated.ok) throw new Error(validated.error);
+
+  const ext = EXT_BY_MIME[validated.mime] ?? ".png";
+  const id = randomUUID();
+  const storageKey = `${id}${ext}`;
+  const uploadDir = path.join(process.cwd(), "public", "uploads", "instagram");
+  const safeName = filenamePrefix.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
+
+  await mkdir(uploadDir, { recursive: true });
+  await writeFile(path.join(uploadDir, storageKey), buffer);
+
+  return {
+    storageKey,
+    publicUrl: `${UPLOAD_PUBLIC_PREFIX}/${storageKey}`,
+    mimeType: validated.mime,
+    fileSize: buffer.length,
+    filename: `${safeName}${ext}`,
+  };
+}
+
+export function resolveStoragePath(storageKey: string): string {
+  return path.join(process.cwd(), "public", "uploads", "instagram", storageKey);
+}
+
 export async function saveImageFile(file: File): Promise<{
   storageKey: string;
   publicUrl: string;
