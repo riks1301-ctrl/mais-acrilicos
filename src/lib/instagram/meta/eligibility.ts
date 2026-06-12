@@ -1,5 +1,5 @@
 import type { InstagramPost } from "@prisma/client";
-import { envAutoPublishEnabled, loadMetaConfig, validateMetaConfig } from "./config";
+import { loadMetaConfig, validateMetaConfig } from "./config";
 
 type PostWithMedia = InstagramPost & {
   postImages: { role: string; order: number; image: { url: string; status: string } }[];
@@ -25,9 +25,10 @@ function absolutePublicUrl(url: string): string | null {
 }
 
 export function buildPublishCaption(post: InstagramPost): string {
-  if (post.finalCaption?.trim()) return post.finalCaption.trim();
-  const parts = [post.finalCaption, post.finalHashtags].filter(Boolean);
-  return parts.join("\n\n").trim();
+  const caption = post.finalCaption?.trim() ?? "";
+  const hashtags = post.finalHashtags?.trim() ?? "";
+  if (caption && hashtags) return `${caption}\n\n${hashtags}`;
+  return caption || hashtags;
 }
 
 export async function checkPostPublishEligibility(
@@ -43,6 +44,12 @@ export async function checkPostPublishEligibility(
   warnings.push(...metaCheck.warnings);
 
   if (config.mode === "DISABLED") errors.push("Integração Meta desativada.");
+
+  if (!post.approvedAt) errors.push("Post não foi aprovado manualmente.");
+
+  if (["IDEA", "CREATING", "PENDING_APPROVAL", "REJECTED"].includes(post.status)) {
+    errors.push("Rascunhos, pendentes ou reprovados não podem ser publicados.");
+  }
 
   const channel = post.publicationChannel ?? (post.format === "CAROUSEL" ? "CAROUSEL" : post.format === "REELS" ? "REELS" : post.format === "STORY" ? "STORY" : "FEED");
 
@@ -71,6 +78,10 @@ export async function checkPostPublishEligibility(
     if (options.allowApproved && !["APPROVED", "SCHEDULED"].includes(post.status)) {
       errors.push("Somente posts APPROVED ou SCHEDULED podem ser publicados via API.");
     }
+  }
+
+  if (post.status === "SCHEDULED" && !post.scheduledFor) {
+    errors.push("Post agendado sem data/hora (scheduledFor).");
   }
 
   if (options.requireScheduled) {
@@ -108,6 +119,3 @@ export async function checkPostPublishEligibility(
   };
 }
 
-export function isAutoPublishAllowed(): boolean {
-  return envAutoPublishEnabled();
-}

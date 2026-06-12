@@ -63,7 +63,7 @@ export function MetaConfigForm() {
         metaIgUserId: igId,
         metaAppId: appId || undefined,
         metaMode: mode,
-        metaAutoPublish: autoPublish,
+        metaAutoPublish: mode === "ACTIVE" ? autoPublish : false,
         metaTokenExpiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
         ...(token ? { accessToken: token } : {}),
       }),
@@ -135,9 +135,21 @@ export function MetaConfigForm() {
         </Field>
         <div className="md:col-span-2">
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={autoPublish} onChange={(e) => setAutoPublish(e.target.checked)} />
-            Publicação automática no job run-due (exige também INSTAGRAM_AUTO_PUBLISH=true no .env)
+            <input
+              type="checkbox"
+              checked={autoPublish}
+              disabled={mode !== "ACTIVE"}
+              onChange={(e) => setAutoPublish(e.target.checked)}
+            />
+            Publicação automática no job run-due (exige INSTAGRAM_AUTO_PUBLISH=true no .env e modo ATIVO)
           </label>
+          {mode !== "ACTIVE" && autoPublish && (
+            <p className="mt-1 text-xs text-amber-700">Auto publish só funciona em modo ATIVO.</p>
+          )}
+        </div>
+        <div className="md:col-span-2 rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-600">
+          Variáveis no servidor (Vercel): META_APP_ID, META_APP_SECRET, META_PAGE_ID, META_IG_BUSINESS_ACCOUNT_ID,
+          META_ACCESS_TOKEN, INSTAGRAM_AUTO_PUBLISH=false, META_PUBLISH_CRON_SECRET. Nunca commitar no GitHub.
         </div>
       </div>
 
@@ -149,6 +161,17 @@ export function MetaConfigForm() {
         </button>
         <button type="button" onClick={validate} disabled={validating} className="rounded-xl border px-6 py-2.5 text-sm font-semibold">
           {validating ? "Validando..." : "Testar conexão Meta"}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setMode("DISABLED");
+            setAutoPublish(false);
+            setMessage("Modo emergência: defina DESATIVADO + auto publish off e clique Salvar.");
+          }}
+          className="rounded-xl border border-red-200 bg-red-50 px-6 py-2.5 text-sm font-semibold text-red-700"
+        >
+          Desligar tudo (emergência)
         </button>
       </div>
     </div>

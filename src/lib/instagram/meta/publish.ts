@@ -43,12 +43,18 @@ export async function publishSingleImagePost(
       where: { id: postId },
       data: { metaPublishError: error, metaLastPublishAttempt: new Date() },
     });
-    await logPublication(postId, "meta_publish_failed", {
-      adminId: options.adminId,
-      errors: eligibility.errors,
-      warnings: eligibility.warnings,
-      mode: config.mode,
-    });
+    await logPublication(
+      postId,
+      "meta_publish_failed",
+      {
+        adminId: options.adminId,
+        errors: eligibility.errors,
+        warnings: eligibility.warnings,
+        mode: config.mode,
+        previousStatus: post.status,
+      },
+      error
+    );
     return { ok: false, testMode: config.mode === "TEST", error };
   }
 
@@ -63,16 +69,20 @@ export async function publishSingleImagePost(
   if (config.mode === "TEST") {
     await logPublication(postId, "meta_publish_test_mode", {
       adminId: options.adminId,
-      imageUrl,
       captionPreview: caption.slice(0, 120),
       mode: "test",
+      previousStatus: post.status,
+      simulated: true,
     });
     return { ok: true, testMode: true, mediaContainerId: "TEST_CONTAINER", mediaId: "TEST_MEDIA" };
   }
 
   try {
     const container = await createMediaContainer(config, { imageUrl, caption });
-    await waitForContainerReady(config, container.id);
+    const ready = await waitForContainerReady(config, container.id);
+    if (!ready || (ready.status_code !== "FINISHED" && ready.status_code !== "PUBLISHED")) {
+      throw new Error("Container de mídia não ficou pronto para publicação. Tente novamente em alguns segundos.");
+    }
     const published = await publishMediaContainer(config, container.id);
 
     await prisma.instagramPost.update({
@@ -93,6 +103,8 @@ export async function publishSingleImagePost(
       mediaId: published.id,
       mode: config.mode,
       manual: options.manual ?? false,
+      previousStatus: post.status,
+      newStatus: "PUBLISHED",
     });
 
     return { ok: true, testMode: false, mediaContainerId: container.id, mediaId: published.id };
@@ -102,16 +114,21 @@ export async function publishSingleImagePost(
 
     await prisma.instagramPost.update({
       where: { id: postId },
-      data: { metaPublishError: sanitized, status: "ERROR" },
+      data: { metaPublishError: sanitized, metaLastPublishAttempt: new Date() },
     });
 
-    await logPublication(postId, "meta_publish_failed", {
-      adminId: options.adminId,
-      error: sanitized,
-      fbtrace_id: meta.fbtrace_id,
-      code: meta.code,
-      mode: config.mode,
-    });
+    await logPublication(
+      postId,
+      "meta_publish_failed",
+      {
+        adminId: options.adminId,
+        fbtrace_id: meta.fbtrace_id,
+        code: meta.code,
+        mode: config.mode,
+        previousStatus: post.status,
+      },
+      sanitized
+    );
 
     return { ok: false, testMode: false, error: sanitized, sanitizedError: sanitized };
   }

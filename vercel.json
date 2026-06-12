@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/admin/instagram/publish/run-due?limit=5",
+      "schedule": "*/15 * * * *"
+    }
+  ]
+}
