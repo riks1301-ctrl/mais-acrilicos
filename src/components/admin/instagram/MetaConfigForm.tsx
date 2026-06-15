@@ -1,6 +1,11 @@
 "use client";
 
+import { MetaSetupGuide } from "@/components/admin/instagram/MetaSetupGuide";
 import { useEffect, useState } from "react";
+
+const DEFAULT_IG_ID = "27079826968347998";
+const DEFAULT_APP_ID = "3200368863497226";
+const inputCls = "w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm";
 
 type MetaStatus = {
   mode: string;
@@ -27,8 +32,6 @@ type MetaStatus = {
   };
   validation: { ok: boolean; errors: string[]; warnings: string[] };
 };
-
-const inputCls = "w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm";
 
 export function MetaConfigForm() {
   const [status, setStatus] = useState<MetaStatus | null>(null);
@@ -119,6 +122,8 @@ export function MetaConfigForm() {
 
   return (
     <div className="space-y-6">
+      <MetaSetupGuide />
+
       <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
         <strong>Importante:</strong> tokens ficam no servidor (.env e/ou banco criptografado). O painel nunca mostra o token completo.
         Modo <strong>TESTE</strong> valida sem publicar. Modo <strong>ATIVO</strong> publica de verdade via Graph API.
@@ -205,6 +210,18 @@ export function MetaConfigForm() {
         </button>
         <button type="button" onClick={clearStoredToken} disabled={saving} className="rounded-xl border border-amber-200 bg-amber-50 px-6 py-2.5 text-sm font-semibold text-amber-900">
           Usar token da Vercel (limpar painel)
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setIgId(DEFAULT_IG_ID);
+            setAppId(DEFAULT_APP_ID);
+            setMode("TEST");
+            setMessage("IDs preenchidos. Cole o token IG no campo Access Token → Salvar → Testar.");
+          }}
+          className="rounded-xl border border-brand-200 bg-brand-50 px-6 py-2.5 text-sm font-semibold text-brand-800"
+        >
+          Preencher IDs padrão
         </button>
         <button
           type="button"
