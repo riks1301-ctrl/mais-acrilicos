@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import type { IgMetaMode } from "@prisma/client";
 import { decryptToken, encryptToken, maskToken } from "./crypto";
 import type { MetaConfig, MetaValidationResult } from "./types";
-import { graphFetch, resolveGraphHost, sanitizeAccessToken, describeTokenProblem } from "./client";
+import { graphFetch, resolveGraphHost, sanitizeAccessToken, describeTokenProblem, pickAccessToken } from "./client";
 
 export function envAutoPublishEnabled(): boolean {
   return process.env.INSTAGRAM_AUTO_PUBLISH === "true";
@@ -10,24 +10,23 @@ export function envAutoPublishEnabled(): boolean {
 
 export async function loadMetaConfig(): Promise<MetaConfig> {
   const brand = await prisma.instagramBrandConfig.findFirst({ orderBy: { createdAt: "asc" } });
+  const graphHost = resolveGraphHost();
 
   const envToken = sanitizeAccessToken(process.env.META_ACCESS_TOKEN);
-  let accessToken = envToken;
-  let tokenSource: "vercel" | "painel" | "nenhum" = envToken ? "vercel" : "nenhum";
-
-  if (!accessToken && brand?.metaAccessTokenEnc) {
+  let dbToken: string | null = null;
+  if (brand?.metaAccessTokenEnc) {
     try {
-      accessToken = sanitizeAccessToken(decryptToken(brand.metaAccessTokenEnc));
-      tokenSource = accessToken ? "painel" : "nenhum";
+      dbToken = sanitizeAccessToken(decryptToken(brand.metaAccessTokenEnc));
     } catch {
-      accessToken = null;
-      tokenSource = "nenhum";
+      dbToken = null;
     }
   }
 
+  const { accessToken, tokenSource } = pickAccessToken(envToken, dbToken, graphHost);
+
   const config: MetaConfig = {
     apiVersion: process.env.META_GRAPH_API_VERSION || "v23.0",
-    graphHost: resolveGraphHost(),
+    graphHost,
     appId: brand?.metaAppId || process.env.META_APP_ID || null,
     appSecret: process.env.META_APP_SECRET || null,
     pageId: brand?.metaPageId || process.env.META_PAGE_ID || null,

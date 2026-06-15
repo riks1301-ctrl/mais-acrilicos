@@ -32,10 +32,23 @@ export function describeTokenProblem(token: string | null, graphHost: MetaGraphH
   return null;
 }
 
+export function pickAccessToken(
+  envToken: string | null,
+  dbToken: string | null,
+  graphHost: MetaGraphHost = resolveGraphHost()
+): { accessToken: string | null; tokenSource: "vercel" | "painel" | "nenhum" } {
+  const envOk = envToken && isPlausibleMetaToken(envToken, graphHost);
+  const dbOk = dbToken && isPlausibleMetaToken(dbToken, graphHost);
+  if (envOk) return { accessToken: envToken, tokenSource: "vercel" };
+  if (dbOk) return { accessToken: dbToken, tokenSource: "painel" };
+  if (envToken) return { accessToken: envToken, tokenSource: "vercel" };
+  if (dbToken) return { accessToken: dbToken, tokenSource: "painel" };
+  return { accessToken: null, tokenSource: "nenhum" };
+}
+
 export function resolveGraphHost(): MetaGraphHost {
   const env = process.env.META_GRAPH_HOST?.toLowerCase();
   if (env === "facebook" || env === "instagram") return env;
-  // App maisacrilico-IG usa Instagram Login → graph.instagram.com
   return "instagram";
 }
 
