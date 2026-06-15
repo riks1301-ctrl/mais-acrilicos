@@ -2,6 +2,14 @@ import { z } from "zod";
 
 const stringList = z.array(z.string().min(1)).min(1);
 
+const logoUrlSchema = z
+  .string()
+  .optional()
+  .transform((v) => (v ?? "").trim())
+  .refine((v) => !v || v.startsWith("/") || /^https?:\/\//i.test(v), {
+    message: "URL do logo inválida. Use https://... ou /uploads/... — ou deixe em branco.",
+  });
+
 export const brandConfigSchema = z.object({
   companyName: z.string().min(2, "Nome da empresa obrigatório"),
   instagramHandle: z.string().min(2, "Handle do Instagram obrigatório").transform((v) => v.replace(/^@/, "")),
@@ -13,7 +21,7 @@ export const brandConfigSchema = z.object({
   differentials: stringList,
   primaryHashtags: stringList,
   localHashtags: z.array(z.string()),
-  logoUrl: z.string().url().optional().or(z.literal("")),
+  logoUrl: logoUrlSchema,
   brandColors: z
     .object({
       primary: z.string(),

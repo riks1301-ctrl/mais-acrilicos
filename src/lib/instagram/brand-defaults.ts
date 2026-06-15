@@ -2,11 +2,11 @@ import type { Prisma } from "@prisma/client";
 
 export const DEFAULT_BRAND_CONFIG: Omit<Prisma.InstagramBrandConfigCreateInput, "personas"> = {
   companyName: "Mais Acrílicos",
-  instagramHandle: "maisacrilicos",
+  instagramHandle: "maisacrilico",
   segment: "Comunicação visual e PDV",
   tone: "Profissional, direto, vendedor, moderno e confiável",
   mainCta: "Chame no WhatsApp e peça seu orçamento",
-  whatsappNumber: process.env.NEXT_PUBLIC_WHATSAPP || "5511999999999",
+  whatsappNumber: process.env.NEXT_PUBLIC_WHATSAPP || "5541987675762",
   targetAudience: [
     "Mercados e supermercados",
     "Farmácias",

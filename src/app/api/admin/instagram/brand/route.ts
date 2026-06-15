@@ -40,7 +40,11 @@ export async function PUT(req: Request) {
 
     return NextResponse.json(sanitizeBrandForClient(brand));
   } catch (e) {
-    if (e instanceof z.ZodError) return NextResponse.json({ error: e.errors[0].message }, { status: 400 });
+    if (e instanceof z.ZodError) {
+      const first = e.errors[0];
+      const field = first.path.length ? `${String(first.path[0])}: ` : "";
+      return NextResponse.json({ error: `${field}${first.message}` }, { status: 400 });
+    }
     return NextResponse.json({ error: "Erro ao salvar configuração da marca" }, { status: 500 });
   }
 }

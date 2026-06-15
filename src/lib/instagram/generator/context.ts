@@ -47,7 +47,26 @@ export function buildHashtags(brand: BrandContext, extra: string[] = []): string
   return unique.join(" ");
 }
 
+export function normalizeWhatsappDigits(phone: string): string {
+  return phone.replace(/\D/g, "");
+}
+
+/** Ex.: 5541987675762 → (41) 98767-5762 */
+export function formatBrazilWhatsappDisplay(phone: string): string {
+  let d = normalizeWhatsappDigits(phone);
+  if (d.startsWith("55") && d.length >= 12) d = d.slice(2);
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return phone.trim() || d;
+}
+
+export function buildWhatsappCta(brand: BrandContext): string {
+  const digits = normalizeWhatsappDigits(brand.whatsappNumber);
+  const display = formatBrazilWhatsappDisplay(brand.whatsappNumber);
+  return `📲 ${brand.mainCta}\n👉 wa.me/${digits}\n📱 ${display}`;
+}
+
 export function whatsappLink(brand: BrandContext, message?: string): string {
   const text = message ? `&text=${encodeURIComponent(message)}` : "";
-  return `https://wa.me/${brand.whatsappNumber.replace(/\D/g, "")}${text ? `?${text.slice(1)}` : ""}`;
+  return `https://wa.me/${normalizeWhatsappDigits(brand.whatsappNumber)}${text ? `?${text.slice(1)}` : ""}`;
 }

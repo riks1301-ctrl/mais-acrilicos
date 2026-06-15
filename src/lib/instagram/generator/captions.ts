@@ -1,5 +1,5 @@
 import type { BrandContext, GeneratedCaption, GeneratedIdea } from "@/lib/instagram/types";
-import { buildHashtags, pickSegment, pickService } from "./context";
+import { buildHashtags, buildWhatsappCta, pickSegment, pickService } from "./context";
 
 type CaptionInput = {
   brand: BrandContext;
@@ -65,8 +65,7 @@ function extraHashtags(idea: GeneratedIdea): string[] {
 export function generateCaptions(input: CaptionInput): GeneratedCaption[] {
   const { brand, idea, title } = input;
   const hashtags = buildHashtags(brand, extraHashtags(idea));
-  const wa = brand.whatsappNumber.replace(/\D/g, "");
-  const cta = `📲 ${brand.mainCta}\n👉 wa.me/${wa}`;
+  const cta = buildWhatsappCta(brand);
 
   const versionA: GeneratedCaption = {
     version: "A",
@@ -82,7 +81,7 @@ export function generateCaptions(input: CaptionInput): GeneratedCaption[] {
     version: "B",
     hook: HOOKS_EDUCATIONAL[Math.floor(Math.random() * HOOKS_EDUCATIONAL.length)](title),
     body: bodyEducational(input),
-    cta: `👉 ${brand.mainCta}\n📱 wa.me/${wa}`,
+    cta: buildWhatsappCta(brand),
     hashtags,
     fullText: "",
   };

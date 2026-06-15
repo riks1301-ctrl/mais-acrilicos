@@ -71,6 +71,8 @@ export function BrandConfigForm() {
 
     const payload = {
       ...form,
+      logoUrl: (form.logoUrl || "").trim(),
+      whatsappNumber: form.whatsappNumber.replace(/\D/g, ""),
       targetAudience: form.targetAudience.filter(Boolean),
       differentials: form.differentials.filter(Boolean),
       primaryHashtags: form.primaryHashtags.filter(Boolean),
@@ -102,11 +104,17 @@ export function BrandConfigForm() {
           <Field label="Nome da empresa" value={form.companyName} onChange={(v) => setField("companyName", v)} />
           <Field label="Instagram (@)" value={form.instagramHandle} onChange={(v) => setField("instagramHandle", v)} placeholder="maisacrilicos" />
           <Field label="Segmento" value={form.segment} onChange={(v) => setField("segment", v)} />
-          <Field label="WhatsApp (com DDI)" value={form.whatsappNumber} onChange={(v) => setField("whatsappNumber", v)} placeholder="5511999999999" />
+          <Field label="WhatsApp (com DDI)" value={form.whatsappNumber} onChange={(v) => setField("whatsappNumber", v)} placeholder="5541987675762" hint="Só números. Ex.: 5541987675762 → aparece (41) 98767-5762 na legenda" />
         </div>
         <Field label="Tom de voz" value={form.tone} onChange={(v) => setField("tone", v)} />
         <Field label="CTA principal" value={form.mainCta} onChange={(v) => setField("mainCta", v)} />
-        <Field label="URL do logo (opcional)" value={form.logoUrl || ""} onChange={(v) => setField("logoUrl", v)} />
+        <Field
+          label="URL do logo (opcional)"
+          value={form.logoUrl || ""}
+          onChange={(v) => setField("logoUrl", v)}
+          placeholder="https://... ou /uploads/instagram/logo.png"
+          hint="Deixe vazio se não tiver logo. Caminhos relativos (/uploads/...) são aceitos."
+        />
         <textarea
           value={form.visualGuidelines || ""}
           onChange={(e) => setField("visualGuidelines", e.target.value)}
@@ -201,7 +209,7 @@ export function BrandConfigForm() {
   );
 }
 
-function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+function Field({ label, value, onChange, placeholder, hint }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; hint?: string }) {
   return (
     <div>
       <label className="mb-1 block text-sm font-medium text-slate-700">{label}</label>
@@ -212,6 +220,7 @@ function Field({ label, value, onChange, placeholder }: { label: string; value: 
         placeholder={placeholder}
         className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
       />
+      {hint ? <p className="mt-1 text-xs text-slate-500">{hint}</p> : null}
     </div>
   );
 }

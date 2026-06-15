@@ -1,7 +1,7 @@
 import type { IgContentType } from "@prisma/client";
 import type { BrandContext } from "@/lib/instagram/types";
 import { CAROUSEL_SLIDE_TYPES } from "@/lib/instagram/images/constants";
-import { pickSegment, pickService } from "./context";
+import { buildWhatsappCta, pickSegment, pickService } from "./context";
 
 export type CarouselSlideData = {
   order: number;
@@ -42,7 +42,7 @@ export function generateCarouselSlides(
     },
     cta: {
       headline: "Peça seu orçamento",
-      body: `📲 ${brand.mainCta}\n\nWhatsApp: ${brand.whatsappNumber}\n@${brand.instagramHandle}`,
+      body: `${buildWhatsappCta(brand)}\n\n@${brand.instagramHandle}`,
     },
   };
 

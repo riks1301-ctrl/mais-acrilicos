@@ -12,6 +12,7 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "db:patch-brand": "tsx scripts/patch-instagram-brand.ts",
     "instagram:validate": "tsx scripts/validate-instagram-agent.ts",
     "instagram:check": "npm run instagram:validate && npm run build"
   },

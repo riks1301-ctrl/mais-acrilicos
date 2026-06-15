@@ -5,9 +5,9 @@ export const siteConfig = {
     "Fabricante premium de displays de acrílico, luminosos, fachadas e materiais de PDV. Soluções em comunicação visual para supermercados, farmácias e varejo.",
   url: process.env.NEXT_PUBLIC_SITE_URL || "https://www.maisacrilicos.com.br",
   ogImage: "/og-image.jpg",
-  phone: "(11) 99999-9999",
+  phone: "(41) 98767-5762",
   email: "contato@maisacrilicos.com.br",
-  whatsapp: process.env.NEXT_PUBLIC_WHATSAPP || "5511999999999",
+  whatsapp: process.env.NEXT_PUBLIC_WHATSAPP || "5541987675762",
   address: "São Paulo, SP - Brasil",
   social: {
     instagram: "https://instagram.com/maisacrilicos",

@@ -54,6 +54,19 @@ async function main() {
         personas: { create: DEFAULT_PERSONAS },
       },
     });
+  } else {
+    const logoOk =
+      !existingBrand.logoUrl?.trim() ||
+      existingBrand.logoUrl.startsWith("/") ||
+      /^https?:\/\//i.test(existingBrand.logoUrl);
+    await prisma.instagramBrandConfig.update({
+      where: { id: existingBrand.id },
+      data: {
+        whatsappNumber: DEFAULT_BRAND_CONFIG.whatsappNumber as string,
+        instagramHandle: DEFAULT_BRAND_CONFIG.instagramHandle as string,
+        ...(logoOk ? {} : { logoUrl: null }),
+      },
+    });
   }
 
   const services = [
