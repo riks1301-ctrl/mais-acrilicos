@@ -26,6 +26,9 @@ export function describeTokenProblem(token: string | null, graphHost: MetaGraphH
   if (graphHost === "instagram" && !token.startsWith("IG")) {
     return "Token do Instagram deve começar com IG. Meta Developers → Passo 2 → Gerar token → cole na Vercel.";
   }
+  if (token.includes(" ") || token.includes("\n")) {
+    return "Token contém espaço ou quebra de linha. Cole de novo sem espaços extras.";
+  }
   if (!isPlausibleMetaToken(token, graphHost)) {
     return "Token inválido ou corrompido. Gere um novo no Meta Developers e atualize na Vercel.";
   }
@@ -72,17 +75,22 @@ export async function graphFetch<T>(
     for (const [k, v] of Object.entries(options.params)) url.searchParams.set(k, v);
   }
 
-  const useBearer = config.graphHost === "instagram";
+  const useInstagramLogin = config.graphHost === "instagram";
   const headers: Record<string, string> = {};
   if (options.body) headers["Content-Type"] = "application/x-www-form-urlencoded";
-  if (useBearer) {
-    headers.Authorization = `Bearer ${config.accessToken}`;
+
+  // Instagram Login: access_token na query (Bearer pode retornar "Bad signature")
+  if (useInstagramLogin) {
+    url.searchParams.set("access_token", config.accessToken);
   } else {
     url.searchParams.set("access_token", config.accessToken);
   }
 
   const body = options.body
-    ? new URLSearchParams({ ...options.body, ...(useBearer ? {} : { access_token: config.accessToken }) }).toString()
+    ? new URLSearchParams({
+        ...options.body,
+        ...(useInstagramLogin ? { access_token: config.accessToken } : {}),
+      }).toString()
     : undefined;
 
   const res = await fetch(url.toString(), {

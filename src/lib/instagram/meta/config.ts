@@ -19,6 +19,9 @@ export async function loadMetaConfig(): Promise<MetaConfig> {
       dbToken = sanitizeAccessToken(decryptToken(brand.metaAccessTokenEnc));
     } catch {
       dbToken = null;
+      void prisma.instagramBrandConfig
+        .update({ where: { id: brand.id }, data: { metaAccessTokenEnc: null } })
+        .catch(() => null);
     }
   }
 
