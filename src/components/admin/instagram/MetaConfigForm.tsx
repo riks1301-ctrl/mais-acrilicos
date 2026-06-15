@@ -78,6 +78,23 @@ export function MetaConfigForm() {
     load();
   }
 
+  async function clearStoredToken() {
+    setSaving(true);
+    setMessage(null);
+    const res = await fetch("/api/admin/instagram/meta", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clearStoredToken: true, metaMode: mode }),
+    });
+    setSaving(false);
+    if (!res.ok) {
+      setMessage((await res.json()).error);
+      return;
+    }
+    setMessage("Token do painel removido. O servidor usará META_ACCESS_TOKEN da Vercel.");
+    load();
+  }
+
   async function validate() {
     setValidating(true);
     setMessage(null);
@@ -162,6 +179,9 @@ export function MetaConfigForm() {
         </button>
         <button type="button" onClick={validate} disabled={validating} className="rounded-xl border px-6 py-2.5 text-sm font-semibold">
           {validating ? "Validando..." : "Testar conexão Meta"}
+        </button>
+        <button type="button" onClick={clearStoredToken} disabled={saving} className="rounded-xl border border-amber-200 bg-amber-50 px-6 py-2.5 text-sm font-semibold text-amber-900">
+          Usar token da Vercel (limpar painel)
         </button>
         <button
           type="button"

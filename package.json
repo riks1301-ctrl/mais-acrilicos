@@ -13,6 +13,7 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "db:patch-brand": "tsx scripts/patch-instagram-brand.ts",
+    "db:clear-meta-token": "tsx scripts/clear-meta-token.ts",
     "instagram:validate": "tsx scripts/validate-instagram-agent.ts",
     "instagram:check": "npm run instagram:validate && npm run build"
   },

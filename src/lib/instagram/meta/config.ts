@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import type { IgMetaMode } from "@prisma/client";
 import { decryptToken, encryptToken, maskToken } from "./crypto";
 import type { MetaConfig, MetaValidationResult } from "./types";
-import { graphFetch, resolveGraphHost, sanitizeAccessToken } from "./client";
+import { graphFetch, resolveGraphHost, sanitizeAccessToken, describeTokenProblem } from "./client";
 
 export function envAutoPublishEnabled(): boolean {
   return process.env.INSTAGRAM_AUTO_PUBLISH === "true";
@@ -11,12 +11,15 @@ export function envAutoPublishEnabled(): boolean {
 export async function loadMetaConfig(): Promise<MetaConfig> {
   const brand = await prisma.instagramBrandConfig.findFirst({ orderBy: { createdAt: "asc" } });
 
-  let accessToken = sanitizeAccessToken(process.env.META_ACCESS_TOKEN);
-  if (brand?.metaAccessTokenEnc) {
+  const envToken = sanitizeAccessToken(process.env.META_ACCESS_TOKEN);
+  let accessToken = envToken;
+
+  // Token da Vercel (.env) tem prioridade — evita token corrompido salvo pelo painel
+  if (!accessToken && brand?.metaAccessTokenEnc) {
     try {
       accessToken = sanitizeAccessToken(decryptToken(brand.metaAccessTokenEnc));
     } catch {
-      accessToken = sanitizeAccessToken(process.env.META_ACCESS_TOKEN);
+      accessToken = null;
     }
   }
 
@@ -39,7 +42,11 @@ export function validateMetaConfig(config: MetaConfig): MetaValidationResult {
   const warnings: string[] = [];
 
   if (config.mode === "DISABLED") errors.push("Modo Meta está DESATIVADO.");
-  if (!config.accessToken) errors.push("Access token ausente (configure .env ou painel Meta).");
+  if (!config.accessToken) errors.push("Access token ausente (configure META_ACCESS_TOKEN na Vercel).");
+  else {
+    const tokenProblem = describeTokenProblem(config.accessToken);
+    if (tokenProblem) errors.push(tokenProblem);
+  }
   if (!config.igBusinessAccountId) errors.push("Instagram Business Account ID ausente.");
   if (!config.pageId) warnings.push("Facebook Page ID não configurado (recomendado).");
   if (config.tokenExpiresAt && config.tokenExpiresAt < new Date()) {
@@ -50,6 +57,12 @@ export function validateMetaConfig(config: MetaConfig): MetaValidationResult {
 }
 
 export async function getInstagramAccount(config: MetaConfig) {
+  if (config.graphHost === "instagram") {
+    return graphFetch<{ id: string; username?: string; name?: string }>(config, "/me", {
+      params: { fields: "id,username,name" },
+    });
+  }
+
   if (!config.igBusinessAccountId) throw new Error("Instagram Business Account ID não configurado");
   return graphFetch<{ id: string; username?: string; name?: string }>(
     config,
@@ -99,6 +112,7 @@ export async function saveMetaSettings(input: {
   metaAutoPublish?: boolean;
   metaTokenExpiresAt?: Date | null;
   accessToken?: string;
+  clearStoredToken?: boolean;
 }) {
   const brand = await prisma.instagramBrandConfig.findFirst({ orderBy: { createdAt: "asc" } });
   if (!brand) throw new Error("Configure a marca antes da integração Meta.");
@@ -111,6 +125,12 @@ export async function saveMetaSettings(input: {
     metaAutoPublish: input.metaAutoPublish ?? brand.metaAutoPublish,
     metaTokenExpiresAt: input.metaTokenExpiresAt ?? brand.metaTokenExpiresAt,
   };
+
+  if (input.clearStoredToken) {
+    data.metaAccessTokenEnc = null;
+    data.metaConnected = false;
+    data.metaLastError = null;
+  }
 
   if (input.accessToken?.trim()) {
     data.metaAccessTokenEnc = encryptToken(sanitizeAccessToken(input.accessToken.trim())!);

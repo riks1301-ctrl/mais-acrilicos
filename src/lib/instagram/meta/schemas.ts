@@ -8,6 +8,7 @@ export const metaSettingsSchema = z.object({
   metaAutoPublish: z.boolean().optional(),
   metaTokenExpiresAt: z.string().datetime().nullable().optional(),
   accessToken: z.string().optional(),
+  clearStoredToken: z.boolean().optional(),
 });
 
 export const publishMetaSchema = z.object({

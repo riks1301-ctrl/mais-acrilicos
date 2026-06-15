@@ -25,6 +25,7 @@ export async function PUT(req: Request) {
       metaAutoPublish: data.metaAutoPublish,
       metaTokenExpiresAt: data.metaTokenExpiresAt === null ? null : data.metaTokenExpiresAt ? new Date(data.metaTokenExpiresAt) : undefined,
       accessToken: data.accessToken,
+      clearStoredToken: data.clearStoredToken,
     });
     return NextResponse.json(await getMetaPublicStatus());
   } catch (e) {
