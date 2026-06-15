@@ -13,6 +13,7 @@ export type MetaConfig = {
   mode: IgMetaMode;
   autoPublish: boolean;
   tokenExpiresAt: Date | null;
+  tokenSource?: "vercel" | "painel" | "nenhum";
 };
 
 export type MetaValidationResult = {

@@ -13,17 +13,19 @@ export async function loadMetaConfig(): Promise<MetaConfig> {
 
   const envToken = sanitizeAccessToken(process.env.META_ACCESS_TOKEN);
   let accessToken = envToken;
+  let tokenSource: "vercel" | "painel" | "nenhum" = envToken ? "vercel" : "nenhum";
 
-  // Token da Vercel (.env) tem prioridade — evita token corrompido salvo pelo painel
   if (!accessToken && brand?.metaAccessTokenEnc) {
     try {
       accessToken = sanitizeAccessToken(decryptToken(brand.metaAccessTokenEnc));
+      tokenSource = accessToken ? "painel" : "nenhum";
     } catch {
       accessToken = null;
+      tokenSource = "nenhum";
     }
   }
 
-  return {
+  const config: MetaConfig = {
     apiVersion: process.env.META_GRAPH_API_VERSION || "v23.0",
     graphHost: resolveGraphHost(),
     appId: brand?.metaAppId || process.env.META_APP_ID || null,
@@ -35,6 +37,21 @@ export async function loadMetaConfig(): Promise<MetaConfig> {
     autoPublish: brand?.metaAutoPublish ?? false,
     tokenExpiresAt: brand?.metaTokenExpiresAt ?? null,
   };
+
+  return { ...config, tokenSource };
+}
+
+export function getTokenDiagnostics(config: MetaConfig & { tokenSource?: string }) {
+  const token = config.accessToken;
+  return {
+    tokenSource: config.tokenSource ?? "nenhum",
+    envTokenSet: !!sanitizeAccessToken(process.env.META_ACCESS_TOKEN),
+    graphHost: config.graphHost,
+    tokenLength: token?.length ?? 0,
+    tokenPrefix: token ? `${token.slice(0, 4)}...` : null,
+    looksLikeInstagram: !!token?.startsWith("IG"),
+    looksLikeStripe: !!token?.startsWith("sk_"),
+  };
 }
 
 export function validateMetaConfig(config: MetaConfig): MetaValidationResult {
@@ -44,7 +61,7 @@ export function validateMetaConfig(config: MetaConfig): MetaValidationResult {
   if (config.mode === "DISABLED") errors.push("Modo Meta está DESATIVADO.");
   if (!config.accessToken) errors.push("Access token ausente (configure META_ACCESS_TOKEN na Vercel).");
   else {
-    const tokenProblem = describeTokenProblem(config.accessToken);
+    const tokenProblem = describeTokenProblem(config.accessToken, config.graphHost);
     if (tokenProblem) errors.push(tokenProblem);
   }
   if (!config.igBusinessAccountId) errors.push("Instagram Business Account ID ausente.");
@@ -159,5 +176,6 @@ export async function getMetaPublicStatus() {
     validation,
     apiVersion: config.apiVersion,
     graphHost: config.graphHost,
+    tokenDiagnostics: getTokenDiagnostics(config),
   };
 }

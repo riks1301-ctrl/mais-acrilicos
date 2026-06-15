@@ -10,16 +10,24 @@ export function sanitizeAccessToken(token: string | null | undefined): string | 
   return t || null;
 }
 
-export function isPlausibleMetaToken(token: string | null): boolean {
+export function isPlausibleMetaToken(token: string | null, graphHost: MetaGraphHost = "instagram"): boolean {
   if (!token || token.length < 40) return false;
   if (/[•*]/.test(token) || /configurado/i.test(token)) return false;
+  if (token.startsWith("sk_")) return false;
+  if (graphHost === "instagram" && !token.startsWith("IG")) return false;
   return /^[\w%+=/.-]+$/.test(token);
 }
 
-export function describeTokenProblem(token: string | null): string | null {
-  if (!token) return "Access token ausente. Configure META_ACCESS_TOKEN na Vercel ou cole no painel.";
-  if (!isPlausibleMetaToken(token)) {
-    return "Token inválido ou corrompido (muito curto ou caracteres estranhos). Gere um novo no Meta Developers e atualize na Vercel.";
+export function describeTokenProblem(token: string | null, graphHost: MetaGraphHost = "instagram"): string | null {
+  if (!token) return "Access token ausente. Configure META_ACCESS_TOKEN na Vercel (token que começa com IG).";
+  if (token.startsWith("sk_")) {
+    return "Token errado: parece chave Stripe (sk_...). Apague META_ACCESS_TOKEN na Vercel e cole o token IG do Meta Developers.";
+  }
+  if (graphHost === "instagram" && !token.startsWith("IG")) {
+    return "Token do Instagram deve começar com IG. Meta Developers → Passo 2 → Gerar token → cole na Vercel.";
+  }
+  if (!isPlausibleMetaToken(token, graphHost)) {
+    return "Token inválido ou corrompido. Gere um novo no Meta Developers e atualize na Vercel.";
   }
   return null;
 }
@@ -43,7 +51,7 @@ export async function graphFetch<T>(
 ): Promise<T> {
   if (!config.accessToken) throw new Error("Access token Meta não configurado");
 
-  const tokenProblem = describeTokenProblem(config.accessToken);
+  const tokenProblem = describeTokenProblem(config.accessToken, config.graphHost);
   if (tokenProblem) throw new Error(tokenProblem);
 
   const url = new URL(`${graphBaseUrl(config)}${path}`);

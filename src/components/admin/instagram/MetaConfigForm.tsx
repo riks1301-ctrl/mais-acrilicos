@@ -15,6 +15,16 @@ type MetaStatus = {
   metaLastError: string | null;
   metaLastValidatedAt: string | null;
   apiVersion: string;
+  graphHost?: string;
+  tokenDiagnostics?: {
+    tokenSource: string;
+    envTokenSet: boolean;
+    graphHost: string;
+    tokenLength: number;
+    tokenPrefix: string | null;
+    looksLikeInstagram: boolean;
+    looksLikeStripe: boolean;
+  };
   validation: { ok: boolean; errors: string[]; warnings: string[] };
 };
 
@@ -125,6 +135,19 @@ export function MetaConfigForm() {
 
       {status?.metaLastError && (
         <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">Último erro: {status.metaLastError}</div>
+      )}
+
+      {status?.tokenDiagnostics && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-700 space-y-1">
+          <p><strong>Diagnóstico do token (sem expor o valor):</strong></p>
+          <p>Origem: <strong>{status.tokenDiagnostics.tokenSource}</strong> · API: <strong>{status.tokenDiagnostics.graphHost}</strong></p>
+          <p>
+            Tamanho: <strong>{status.tokenDiagnostics.tokenLength}</strong> · Início: <strong>{status.tokenDiagnostics.tokenPrefix ?? "—"}</strong>
+            {status.tokenDiagnostics.looksLikeStripe && " · ⚠️ Parece Stripe (sk_) — troque na Vercel"}
+            {status.tokenDiagnostics.tokenLength > 0 && !status.tokenDiagnostics.looksLikeInstagram && !status.tokenDiagnostics.looksLikeStripe && " · ⚠️ Deveria começar com IG"}
+            {status.tokenDiagnostics.looksLikeInstagram && " · ✓ Formato IG ok"}
+          </p>
+        </div>
       )}
 
       <div className="rounded-2xl bg-white p-6 shadow-card grid gap-4 md:grid-cols-2">
