@@ -87,7 +87,11 @@ export function MetaConfigForm() {
       return;
     }
     setToken("");
-    setMessage("Configuração Meta salva. Token nunca é exibido completo no painel.");
+    setMessage(
+      token
+        ? "Salvo! Token guardado no servidor (o campo fica vazio por segurança). Agora clique Testar conexão Meta."
+        : `Salvo! Modo: ${mode}. IDs e configuração gravados no banco.`
+    );
     load();
   }
 
@@ -192,10 +196,14 @@ export function MetaConfigForm() {
             <p className="mt-1 text-xs text-amber-700">Auto publish só funciona em modo ATIVO.</p>
           )}
         </div>
-        <div className="md:col-span-2 rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-600">
-          Variáveis no servidor (Vercel): META_APP_ID, META_APP_SECRET, META_IG_BUSINESS_ACCOUNT_ID,
-          META_ACCESS_TOKEN, META_GRAPH_HOST=instagram, INSTAGRAM_AUTO_PUBLISH=false, META_PUBLISH_CRON_SECRET.
-          App com login do Instagram usa <strong>graph.instagram.com</strong> (não Facebook). Nunca commitar no GitHub.
+        <div className="md:col-span-2 rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-600 space-y-2">
+          <p>
+            <strong>Access Token:</strong> depois de salvar, o campo fica vazio de propósito. Se aparecer{" "}
+            <code className="rounded bg-white px-1">•••••••• (configurado no servidor)</code>, o token foi gravado.
+          </p>
+          <p>
+            <strong>Vercel:</strong> variáveis &quot;Sensitive&quot; não mostram o valor ao reabrir — isso é normal. Só confirme a mensagem &quot;Updated successfully&quot; e faça Redeploy.
+          </p>
         </div>
       </div>
 
@@ -213,11 +221,27 @@ export function MetaConfigForm() {
         </button>
         <button
           type="button"
-          onClick={() => {
+          onClick={async () => {
             setIgId(DEFAULT_IG_ID);
             setAppId(DEFAULT_APP_ID);
             setMode("TEST");
-            setMessage("IDs preenchidos. Cole o token IG no campo Access Token → Salvar → Testar.");
+            setSaving(true);
+            const res = await fetch("/api/admin/instagram/meta", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                metaIgUserId: DEFAULT_IG_ID,
+                metaAppId: DEFAULT_APP_ID,
+                metaMode: "TEST",
+              }),
+            });
+            setSaving(false);
+            setMessage(
+              res.ok
+                ? "IDs e modo TESTE salvos no banco. Agora cole o token IG e clique Salvar."
+                : (await res.json()).error || "Erro ao salvar"
+            );
+            if (res.ok) load();
           }}
           className="rounded-xl border border-brand-200 bg-brand-50 px-6 py-2.5 text-sm font-semibold text-brand-800"
         >

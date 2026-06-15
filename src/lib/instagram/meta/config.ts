@@ -137,12 +137,12 @@ export async function saveMetaSettings(input: {
   if (!brand) throw new Error("Configure a marca antes da integração Meta.");
 
   const data: Record<string, unknown> = {
-    metaPageId: input.metaPageId ?? brand.metaPageId,
-    metaIgUserId: input.metaIgUserId ?? brand.metaIgUserId,
-    metaAppId: input.metaAppId ?? brand.metaAppId,
+    metaPageId: input.metaPageId !== undefined ? input.metaPageId || null : brand.metaPageId,
+    metaIgUserId: input.metaIgUserId !== undefined ? input.metaIgUserId || null : brand.metaIgUserId,
+    metaAppId: input.metaAppId !== undefined ? input.metaAppId || null : brand.metaAppId,
     metaMode: input.metaMode ?? brand.metaMode,
     metaAutoPublish: input.metaAutoPublish ?? brand.metaAutoPublish,
-    metaTokenExpiresAt: input.metaTokenExpiresAt ?? brand.metaTokenExpiresAt,
+    metaTokenExpiresAt: input.metaTokenExpiresAt !== undefined ? input.metaTokenExpiresAt : brand.metaTokenExpiresAt,
   };
 
   if (input.clearStoredToken) {
@@ -153,6 +153,7 @@ export async function saveMetaSettings(input: {
 
   if (input.accessToken?.trim()) {
     data.metaAccessTokenEnc = encryptToken(sanitizeAccessToken(input.accessToken.trim())!);
+    data.metaLastError = null;
   }
 
   return prisma.instagramBrandConfig.update({ where: { id: brand.id }, data: data as never });

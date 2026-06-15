@@ -23,7 +23,12 @@ export async function PUT(req: Request) {
       metaAppId: data.metaAppId,
       metaMode: data.metaMode,
       metaAutoPublish: data.metaAutoPublish,
-      metaTokenExpiresAt: data.metaTokenExpiresAt === null ? null : data.metaTokenExpiresAt ? new Date(data.metaTokenExpiresAt) : undefined,
+      metaTokenExpiresAt:
+        data.metaTokenExpiresAt === null || data.metaTokenExpiresAt === ""
+          ? null
+          : data.metaTokenExpiresAt
+            ? new Date(data.metaTokenExpiresAt)
+            : undefined,
       accessToken: data.accessToken,
       clearStoredToken: data.clearStoredToken,
     });

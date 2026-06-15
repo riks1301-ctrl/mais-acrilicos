@@ -6,7 +6,7 @@ export const metaSettingsSchema = z.object({
   metaAppId: z.string().optional(),
   metaMode: z.enum(["DISABLED", "TEST", "ACTIVE"]).optional(),
   metaAutoPublish: z.boolean().optional(),
-  metaTokenExpiresAt: z.string().datetime().nullable().optional(),
+  metaTokenExpiresAt: z.union([z.string(), z.null()]).optional(),
   accessToken: z.string().optional(),
   clearStoredToken: z.boolean().optional(),
 });
