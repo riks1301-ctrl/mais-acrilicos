@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import type { IgMetaMode } from "@prisma/client";
 import { decryptToken, encryptToken, maskToken } from "./crypto";
 import type { MetaConfig, MetaValidationResult } from "./types";
-import { graphFetch } from "./client";
+import { graphFetch, resolveGraphHost, sanitizeAccessToken } from "./client";
 
 export function envAutoPublishEnabled(): boolean {
   return process.env.INSTAGRAM_AUTO_PUBLISH === "true";
@@ -11,17 +11,18 @@ export function envAutoPublishEnabled(): boolean {
 export async function loadMetaConfig(): Promise<MetaConfig> {
   const brand = await prisma.instagramBrandConfig.findFirst({ orderBy: { createdAt: "asc" } });
 
-  let accessToken = process.env.META_ACCESS_TOKEN || null;
+  let accessToken = sanitizeAccessToken(process.env.META_ACCESS_TOKEN);
   if (brand?.metaAccessTokenEnc) {
     try {
-      accessToken = decryptToken(brand.metaAccessTokenEnc);
+      accessToken = sanitizeAccessToken(decryptToken(brand.metaAccessTokenEnc));
     } catch {
-      accessToken = process.env.META_ACCESS_TOKEN || null;
+      accessToken = sanitizeAccessToken(process.env.META_ACCESS_TOKEN);
     }
   }
 
   return {
     apiVersion: process.env.META_GRAPH_API_VERSION || "v23.0",
+    graphHost: resolveGraphHost(),
     appId: brand?.metaAppId || process.env.META_APP_ID || null,
     appSecret: process.env.META_APP_SECRET || null,
     pageId: brand?.metaPageId || process.env.META_PAGE_ID || null,
@@ -112,7 +113,7 @@ export async function saveMetaSettings(input: {
   };
 
   if (input.accessToken?.trim()) {
-    data.metaAccessTokenEnc = encryptToken(input.accessToken.trim());
+    data.metaAccessTokenEnc = encryptToken(sanitizeAccessToken(input.accessToken.trim())!);
   }
 
   return prisma.instagramBrandConfig.update({ where: { id: brand.id }, data: data as never });
@@ -137,5 +138,6 @@ export async function getMetaPublicStatus() {
     metaLastValidatedAt: brand?.metaLastValidatedAt ?? null,
     validation,
     apiVersion: config.apiVersion,
+    graphHost: config.graphHost,
   };
 }

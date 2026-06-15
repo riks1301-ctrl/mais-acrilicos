@@ -1,8 +1,25 @@
 import { parseMetaError } from "./errors";
-import type { MetaConfig } from "./types";
+import type { MetaConfig, MetaGraphHost } from "./types";
+
+export function sanitizeAccessToken(token: string | null | undefined): string | null {
+  if (!token) return null;
+  let t = token.trim();
+  if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
+    t = t.slice(1, -1).trim();
+  }
+  return t || null;
+}
+
+export function resolveGraphHost(): MetaGraphHost {
+  const env = process.env.META_GRAPH_HOST?.toLowerCase();
+  if (env === "facebook" || env === "instagram") return env;
+  // App maisacrilico-IG usa Instagram Login → graph.instagram.com
+  return "instagram";
+}
 
 export function graphBaseUrl(config: MetaConfig): string {
-  return `https://graph.facebook.com/${config.apiVersion}`;
+  const host = config.graphHost === "facebook" ? "graph.facebook.com" : "graph.instagram.com";
+  return `https://${host}/${config.apiVersion}`;
 }
 
 export async function graphFetch<T>(

@@ -1,7 +1,10 @@
 import type { IgMetaMode } from "@prisma/client";
 
+export type MetaGraphHost = "instagram" | "facebook";
+
 export type MetaConfig = {
   apiVersion: string;
+  graphHost: MetaGraphHost;
   appId: string | null;
   appSecret: string | null;
   pageId: string | null;

@@ -148,8 +148,9 @@ export function MetaConfigForm() {
           )}
         </div>
         <div className="md:col-span-2 rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-600">
-          Variáveis no servidor (Vercel): META_APP_ID, META_APP_SECRET, META_PAGE_ID, META_IG_BUSINESS_ACCOUNT_ID,
-          META_ACCESS_TOKEN, INSTAGRAM_AUTO_PUBLISH=false, META_PUBLISH_CRON_SECRET. Nunca commitar no GitHub.
+          Variáveis no servidor (Vercel): META_APP_ID, META_APP_SECRET, META_IG_BUSINESS_ACCOUNT_ID,
+          META_ACCESS_TOKEN, META_GRAPH_HOST=instagram, INSTAGRAM_AUTO_PUBLISH=false, META_PUBLISH_CRON_SECRET.
+          App com login do Instagram usa <strong>graph.instagram.com</strong> (não Facebook). Nunca commitar no GitHub.
         </div>
       </div>
 
