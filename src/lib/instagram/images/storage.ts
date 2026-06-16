@@ -134,19 +134,6 @@ export async function saveImageFile(file: File): Promise<{
   const validated = validateImageBuffer(buffer, file.type);
   if (!validated.ok) throw new Error(validated.error);
 
-  const ext = EXT_BY_MIME[validated.mime] ?? ".jpg";
-  const id = randomUUID();
-  const storageKey = `${id}${ext}`;
-  const uploadDir = path.join(process.cwd(), "public", "uploads", "instagram");
-
-  await mkdir(uploadDir, { recursive: true });
-  await writeFile(path.join(uploadDir, storageKey), buffer);
-
-  return {
-    storageKey,
-    publicUrl: `${UPLOAD_PUBLIC_PREFIX}/${storageKey}`,
-    mimeType: validated.mime,
-    fileSize: buffer.length,
-    filename: file.name.replace(/[^a-zA-Z0-9._-]/g, "_"),
-  };
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/\.[^.]+$/, "") || "upload";
+  return saveImageBuffer(buffer, validated.mime, safeName);
 }

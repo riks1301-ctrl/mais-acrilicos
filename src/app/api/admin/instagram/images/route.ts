@@ -1,4 +1,5 @@
 import { requireAdminSession } from "@/lib/instagram/auth";
+import { resolveAdminImageSrc } from "@/lib/instagram/images/admin-url";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import type { IgImageCategory, IgImageStatus } from "@prisma/client";
@@ -39,5 +40,11 @@ export async function GET(req: Request) {
     take: 200,
   });
 
-  return NextResponse.json(images);
+  return NextResponse.json(
+    images.map((img) => ({
+      ...img,
+      url: resolveAdminImageSrc(img),
+      thumbnailUrl: img.thumbnailUrl ? resolveAdminImageSrc({ url: img.thumbnailUrl, localPath: img.localPath }) : null,
+    }))
+  );
 }

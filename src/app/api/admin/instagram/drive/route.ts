@@ -2,6 +2,7 @@ import { requireAdminSession } from "@/lib/instagram/auth";
 import { getDriveConfig, isDriveApiConfigured, isLocalDriveAvailable, shouldShowLocalDriveUi } from "@/lib/instagram/drive/config";
 import { testDriveConnection } from "@/lib/instagram/drive/google-api";
 import { checkMetaImageUrl } from "@/lib/instagram/drive/meta-publish";
+import { resolveAdminImageSrc } from "@/lib/instagram/images/admin-url";
 import { prisma } from "@/lib/prisma";
 import type { IgImageCategory } from "@prisma/client";
 import { NextResponse } from "next/server";
@@ -73,7 +74,9 @@ export async function GET(req: Request) {
 
   const withMeta = images.map((img) => ({
     ...img,
-    metaCheck: checkMetaImageUrl(img.metaPublishUrl ?? img.url),
+    url: resolveAdminImageSrc(img),
+    thumbnailUrl: img.thumbnailUrl ? resolveAdminImageSrc({ url: img.thumbnailUrl, localPath: img.localPath }) : null,
+    metaCheck: checkMetaImageUrl(img.metaPublishUrl ?? resolveAdminImageSrc(img)),
   }));
 
   return NextResponse.json({

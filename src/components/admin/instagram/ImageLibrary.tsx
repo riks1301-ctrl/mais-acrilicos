@@ -1,14 +1,15 @@
 "use client";
 
+import { resolveAdminImageSrc } from "@/lib/instagram/images/admin-url";
 import { categoryLabel, IMAGE_CATEGORIES, IMAGE_STATUS_LABELS, IMAGE_TYPE_LABELS } from "@/lib/instagram/images/constants";
 import type { IgImageCategory, IgImageStatus, IgImageType } from "@prisma/client";
-import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 type LibraryImage = {
   id: string;
   url: string;
+  localPath?: string | null;
   category: IgImageCategory | null;
   description: string | null;
   tags: string[];
@@ -105,8 +106,9 @@ export function ImageLibrary({ linkPostId }: Props) {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {images.map((img) => (
             <div key={img.id} className="overflow-hidden rounded-2xl bg-white shadow-card">
-              <button type="button" onClick={() => setPreview(img)} className="relative block aspect-square w-full">
-                <Image src={img.url} alt={img.description ?? ""} fill className="object-cover" sizes="250px" />
+              <button type="button" onClick={() => setPreview(img)} className="relative block aspect-square w-full overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={resolveAdminImageSrc(img)} alt={img.description ?? ""} className="h-full w-full object-cover" loading="lazy" />
               </button>
               <div className="p-3 space-y-2">
                 <p className="text-xs font-semibold text-brand-700">{categoryLabel(img.category)}</p>
@@ -132,7 +134,8 @@ export function ImageLibrary({ linkPostId }: Props) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setPreview(null)}>
           <div className="max-h-[90vh] max-w-2xl overflow-auto rounded-2xl bg-white p-4" onClick={(e) => e.stopPropagation()}>
             <div className="relative aspect-square w-full min-w-[300px]">
-              <Image src={preview.url} alt="" fill className="object-contain" sizes="600px" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={resolveAdminImageSrc(preview)} alt="" className="h-full w-full object-contain" />
             </div>
             <p className="mt-3 font-semibold">{preview.description}</p>
             <p className="text-sm text-slate-600">{preview.tags.join(", ")}</p>
