@@ -1,5 +1,5 @@
 import { requireAdminSession } from "@/lib/instagram/auth";
-import { getDriveConfig } from "@/lib/instagram/drive/config";
+import { getDriveConfig, getLocalDriveRoot, isLocalDriveAvailable } from "@/lib/instagram/drive/config";
 import { syncGoogleDriveCatalog, syncLocalDriveCatalog } from "@/lib/instagram/drive/sync";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
@@ -20,17 +20,23 @@ export async function POST(req: Request) {
     const { mode } = syncSchema.parse(await req.json().catch(() => ({})));
     const env = getDriveConfig();
     const folderId = brand.googleDriveFolderId ?? env.folderId;
-    const localPath = brand.googleDriveLocalPath ?? env.localPath;
+    const localPath = brand.googleDriveLocalPath ?? getLocalDriveRoot();
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
     let result;
-    const useLocal = mode === "local_dev" || (mode === "auto" && !folderId && localPath);
-    const useDrive = mode === "google_drive" || (mode === "auto" && folderId);
+    const localOk = localPath && (await isLocalDriveAvailable());
+    const useLocal = mode === "local_dev" || (mode === "auto" && localOk);
+    const useDrive = mode === "google_drive" || (mode === "auto" && !localOk && folderId);
 
-    if (useLocal && localPath) {
+    if (useLocal && localPath && localOk) {
       result = await syncLocalDriveCatalog(brand.id, localPath, siteUrl);
     } else if (useDrive && folderId) {
       result = await syncGoogleDriveCatalog(brand.id, folderId);
+    } else if (localPath && !localOk) {
+      return NextResponse.json(
+        { error: `Pasta local não encontrada ou inacessível: ${localPath}` },
+        { status: 400 }
+      );
     } else {
       return NextResponse.json(
         {

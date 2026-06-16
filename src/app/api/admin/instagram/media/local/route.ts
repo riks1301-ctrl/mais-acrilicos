@@ -1,4 +1,5 @@
 import { requireAdminSession } from "@/lib/instagram/auth";
+import { getLocalDriveRoot } from "@/lib/instagram/drive/config";
 import { isPathInsideRoot } from "@/lib/instagram/drive/local-index";
 import { readFile } from "fs/promises";
 import path from "path";
@@ -11,11 +12,14 @@ export async function GET(req: Request) {
   if (error) return error;
 
   if (process.env.NODE_ENV === "production" && !process.env.ALLOW_LOCAL_DRIVE_MEDIA) {
-    return NextResponse.json({ error: "Mídia local disponível apenas em desenvolvimento." }, { status: 403 });
+    const root = getLocalDriveRoot();
+    if (!root) {
+      return NextResponse.json({ error: "Mídia local disponível apenas em desenvolvimento." }, { status: 403 });
+    }
   }
 
   const filePath = new URL(req.url).searchParams.get("path");
-  const root = process.env.GOOGLE_DRIVE_LOCAL_PATH;
+  const root = getLocalDriveRoot() ?? process.env.GOOGLE_DRIVE_LOCAL_PATH;
   if (!filePath || !root) {
     return NextResponse.json({ error: "path ou GOOGLE_DRIVE_LOCAL_PATH ausente." }, { status: 400 });
   }

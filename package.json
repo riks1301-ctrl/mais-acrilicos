@@ -15,6 +15,7 @@
     "db:patch-brand": "tsx scripts/patch-instagram-brand.ts",
     "db:clear-meta-token": "tsx scripts/clear-meta-token.ts",
     "db:sync-drive-local": "tsx scripts/sync-drive-local.ts",
+    "drive:sync": "tsx scripts/sync-drive-local.ts",
     "instagram:validate": "tsx scripts/validate-instagram-agent.ts",
     "instagram:check": "npm run instagram:validate && npm run build"
   },

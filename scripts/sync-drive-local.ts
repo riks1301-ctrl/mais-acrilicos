@@ -1,16 +1,17 @@
 /**
- * Indexa pasta local do Google Drive (Windows) no catálogo do banco.
- * Uso: GOOGLE_DRIVE_LOCAL_PATH="G:\...\Fotos" npm run db:sync-drive-local
+ * Indexa pasta local do Google Drive (somente leitura) no catálogo do banco.
+ * Uso: LOCAL_DRIVE_ROOT="G:\\Meu Drive" npm run drive:sync
  */
 import { PrismaClient } from "@prisma/client";
+import { getLocalDriveRoot } from "../src/lib/instagram/drive/config";
 import { syncLocalDriveCatalog } from "../src/lib/instagram/drive/sync";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const localPath = process.env.GOOGLE_DRIVE_LOCAL_PATH;
+  const localPath = getLocalDriveRoot();
   if (!localPath) {
-    console.error("Defina GOOGLE_DRIVE_LOCAL_PATH no ambiente.");
+    console.error("Defina LOCAL_DRIVE_ROOT ou GOOGLE_DRIVE_LOCAL_PATH no ambiente.");
     process.exit(1);
   }
 
@@ -23,6 +24,9 @@ async function main() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const result = await syncLocalDriveCatalog(brand.id, localPath, siteUrl);
   console.log(result.message);
+  console.log("Categorias:", result.categories);
+  console.log("Clientes:", result.clients);
+  if (result.errors.length) console.warn("Erros:", result.errors.slice(0, 5));
 }
 
 main()

@@ -198,6 +198,8 @@ enum IgImageCategory {
   LUMINOSO
   PDV
   ANTES_DEPOIS
+  LETRAS_CAIXA
+  TOTEM
 }
 
 enum IgImageStatus {
@@ -434,6 +436,15 @@ model InstagramImage {
   sourceProvider  String               @default("upload")
   driveFileId     String?
   driveFolderPath String?
+  driveRelativePath String?
+  driveMainFolder String?
+  driveSubfolder  String?
+  clientName      String?
+  fileHash        String?
+  fileCreatedAt   DateTime?
+  fileModifiedAt  DateTime?
+  imageWidth      Int?
+  imageHeight     Int?
   localPath       String?
   thumbnailUrl    String?
   webViewLink     String?
@@ -449,6 +460,9 @@ model InstagramImage {
   @@index([status])
   @@index([driveFileId])
   @@index([sourceProvider])
+  @@index([clientName])
+  @@index([fileHash])
+  @@index([driveMainFolder])
 }
 
 model InstagramPostImage {

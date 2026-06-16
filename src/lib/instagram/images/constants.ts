@@ -10,6 +10,8 @@ export const IMAGE_CATEGORIES: { id: IgImageCategory; label: string }[] = [
   { id: "ADESIVO", label: "Adesivos" },
   { id: "LUMINOSO", label: "Luminosos" },
   { id: "PDV", label: "PDV" },
+  { id: "LETRAS_CAIXA", label: "Letras caixa" },
+  { id: "TOTEM", label: "Totem" },
   { id: "ANTES_DEPOIS", label: "Antes/depois" },
 ];
 

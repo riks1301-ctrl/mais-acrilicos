@@ -93,9 +93,9 @@ async function loadImageBuffer(
   url: string,
   localPath?: string | null
 ): Promise<Buffer | null> {
-  if (localPath && process.env.GOOGLE_DRIVE_LOCAL_PATH) {
-    const root = process.env.GOOGLE_DRIVE_LOCAL_PATH;
-    if (isPathInsideRoot(localPath, root)) {
+  if (localPath) {
+    const root = process.env.LOCAL_DRIVE_ROOT || process.env.GOOGLE_DRIVE_LOCAL_PATH;
+    if (root && isPathInsideRoot(localPath, root)) {
       try {
         return await readFile(path.resolve(localPath));
       } catch {
