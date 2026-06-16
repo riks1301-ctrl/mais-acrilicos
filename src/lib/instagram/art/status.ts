@@ -100,5 +100,9 @@ export async function resetArtGeneration(postId: string) {
 }
 
 export async function failArtGeneration(postId: string, message: string) {
-  return completeArtGeneration(postId, false, message);
+  try {
+    return await completeArtGeneration(postId, false, message);
+  } catch {
+    return null;
+  }
 }

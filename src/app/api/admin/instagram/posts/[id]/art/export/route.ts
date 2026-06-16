@@ -1,4 +1,3 @@
-import { exportArtAsJpgZip, exportArtAsPdf, exportArtAsZip, exportSingleFile } from "@/lib/instagram/art/export";
 import { exportArtSchema } from "@/lib/instagram/art/schemas";
 import { requireAdminSession } from "@/lib/instagram/auth";
 import { prisma } from "@/lib/prisma";
@@ -23,6 +22,10 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     if (!arts.length) {
       return NextResponse.json({ error: "Nenhuma arte gerada. Use Gerar arte completa primeiro." }, { status: 404 });
     }
+
+    const { exportArtAsJpgZip, exportArtAsPdf, exportArtAsZip, exportSingleFile } = await import(
+      "@/lib/instagram/art/export"
+    );
 
     const files = arts
       .filter((a) => a.image.storageKey)

@@ -1,4 +1,3 @@
-import { generateCompleteArt } from "@/lib/instagram/art/generate";
 import { generateArtSchema } from "@/lib/instagram/art/schemas";
 import {
   beginArtGeneration,
@@ -15,6 +14,7 @@ import { z } from "zod";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const { error } = await requireAdminSession();
@@ -27,6 +27,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     const body = req.headers.get("content-length") === "0" ? {} : await req.json();
     const input = generateArtSchema.parse(body);
+    const { generateCompleteArt } = await import("@/lib/instagram/art/generate");
 
     if (input.reset) {
       await resetArtGeneration(postId);
@@ -67,9 +68,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 }
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
-  const { error } = await requireAdminSession();
-  if (error) return error;
+  try {
+    const { error } = await requireAdminSession();
+    if (error) return error;
 
-  const artGen = await recoverStaleArtGeneration(params.id);
-  return NextResponse.json({ artGen });
+    const artGen = await recoverStaleArtGeneration(params.id);
+    return NextResponse.json({ artGen });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Erro ao consultar status";
+    return NextResponse.json({ error: message, artGen: null }, { status: 500 });
+  }
 }

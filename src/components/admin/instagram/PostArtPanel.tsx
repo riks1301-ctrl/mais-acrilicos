@@ -2,6 +2,7 @@
 
 import { ART_TEMPLATE_LABELS } from "@/lib/instagram/art/brand-library";
 import { ART_GEN_SLIDE_TIMEOUT_MS } from "@/lib/instagram/art/status";
+import { parseApiJson } from "@/lib/api/parse-json-response";
 import { PROMPT_PURPOSES } from "@/lib/instagram/images/constants";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import type { ArtTemplateId } from "@/lib/instagram/art/types";
@@ -54,14 +55,17 @@ export function PostArtPanel({ postId, visualFormat, artFiles, artGen: initialAr
 
   const pollStatus = useCallback(async () => {
     const res = await fetch(`/api/admin/instagram/posts/${postId}/art/generate`);
-    if (!res.ok) return;
-    const data = await res.json();
-    if (data.artGen) {
-      setArtGen(data.artGen);
-      if (data.artGen.artGenStatus !== "GENERATING") {
-        setGenerating(false);
-        onRefresh();
+    try {
+      const data = await parseApiJson<{ artGen?: ArtGenState }>(res);
+      if (data.artGen) {
+        setArtGen(data.artGen);
+        if (data.artGen.artGenStatus !== "GENERATING") {
+          setGenerating(false);
+          onRefresh();
+        }
       }
+    } catch {
+      /* ignore poll errors */
     }
   }, [postId, onRefresh]);
 
@@ -102,7 +106,7 @@ export function PostArtPanel({ postId, visualFormat, artFiles, artGen: initialAr
         body: JSON.stringify({ templateId, format, prepareOnly: true }),
         timeoutMs: 30_000,
       });
-      const prep = await prepRes.json();
+      const prep = await parseApiJson<{ slideCount?: number; error?: string }>(prepRes);
       if (!prepRes.ok) throw new Error(prep.error || "Erro ao preparar carrossel");
 
       const slideCount = prep.slideCount ?? 6;
@@ -128,7 +132,12 @@ export function PostArtPanel({ postId, visualFormat, artFiles, artGen: initialAr
           }),
           timeoutMs: ART_GEN_SLIDE_TIMEOUT_MS,
         });
-        const data = await res.json();
+        const data = await parseApiJson<{
+          usedRealPhotos?: number;
+          usedTemplates?: number;
+          artGen?: ArtGenState;
+          error?: string;
+        }>(res);
         if (!res.ok) throw new Error(data.error || `Erro no slide ${order}`);
 
         totalReal += data.usedRealPhotos ?? 0;

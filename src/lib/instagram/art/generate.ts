@@ -6,7 +6,6 @@ import { resolveArtTemplate, resolveBrandColors, resolveBrandFonts } from "./bra
 import { buildCanvaExportSpec } from "./canva-spec";
 import { parseFormat } from "./dimensions";
 import { pickBackgroundForSlide, type ImageCandidate } from "./pick-background";
-import { renderSlideArt } from "./render";
 import type { ArtTemplateId, GenerateArtResult, SlideRenderInput } from "./types";
 import { saveImageBuffer } from "@/lib/instagram/images/storage";
 
@@ -158,6 +157,7 @@ export async function generateCompleteArt(
       body: slide.body,
     };
 
+    const { renderSlideArt } = await import("./render");
     const buffer = await renderSlideArt({
       slide: slideInput,
       dims,

@@ -84,19 +84,26 @@ export async function saveImageBuffer(
 
   if (canUseVercelBlob()) {
     const pathname = `instagram/${storageKey}`;
-    const blob = await put(pathname, buffer, {
-      access: "public",
-      contentType: validated.mime,
-      addRandomSuffix: false,
-      ...(process.env.BLOB_STORE_ID ? { storeId: process.env.BLOB_STORE_ID } : {}),
-    });
-    return {
-      storageKey,
-      publicUrl: blob.url,
-      mimeType: validated.mime,
-      fileSize: buffer.length,
-      filename: `${safeName}${ext}`,
-    };
+    try {
+      const blob = await put(pathname, buffer, {
+        access: "public",
+        contentType: validated.mime,
+        addRandomSuffix: false,
+        ...(process.env.BLOB_STORE_ID ? { storeId: process.env.BLOB_STORE_ID } : {}),
+      });
+      return {
+        storageKey,
+        publicUrl: blob.url,
+        mimeType: validated.mime,
+        fileSize: buffer.length,
+        filename: `${safeName}${ext}`,
+      };
+    } catch (e) {
+      const detail = e instanceof Error ? e.message : String(e);
+      throw new Error(
+        `Falha ao gravar no Vercel Blob: ${detail}. Confirme que o store está conectado ao projeto e faça redeploy.`
+      );
+    }
   }
 
   if (process.env.VERCEL) {

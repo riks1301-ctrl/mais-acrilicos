@@ -1,11 +1,15 @@
 import { readFile } from "fs/promises";
 import path from "path";
-import sharp from "sharp";
 import { UPLOAD_PUBLIC_PREFIX } from "@/lib/instagram/images/constants";
 import { fetchImageBuffer } from "@/lib/instagram/images/fetch-buffer";
 import { isPathInsideRoot } from "@/lib/instagram/drive/local-index";
 import { gradientStops, templateStyleForSlide } from "./templates";
 import type { ArtDimensions, ArtTemplateId, BrandColors, BrandFonts, SlideRenderInput } from "./types";
+
+async function getSharp() {
+  const mod = await import("sharp");
+  return mod.default;
+}
 
 function escXml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -124,6 +128,7 @@ async function loadLogoDataUri(logoUrl: string | null | undefined): Promise<stri
     buf = await fetchImageBuffer(logoUrl, 10_000);
   }
   if (!buf) return undefined;
+  const sharp = await getSharp();
   const meta = await sharp(buf).metadata();
   const mime = meta.format === "png" ? "image/png" : "image/jpeg";
   return `data:${mime};base64,${buf.toString("base64")}`;
@@ -142,6 +147,7 @@ export async function renderSlideArt(opts: {
   photoLocalPath?: string | null;
   outputMime: "image/png" | "image/jpeg";
 }): Promise<Buffer> {
+  const sharp = await getSharp();
   const overlay = buildOverlaySvg(
     opts.slide,
     opts.dims,
@@ -153,7 +159,7 @@ export async function renderSlideArt(opts: {
   );
 
   const { width, height } = opts.dims;
-  let base: sharp.Sharp;
+  let base;
 
   const photoBuf =
     opts.photoStorageKey || opts.photoUrl || opts.photoLocalPath

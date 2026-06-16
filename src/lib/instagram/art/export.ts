@@ -1,8 +1,12 @@
 import { readFile } from "fs/promises";
 import JSZip from "jszip";
 import { PDFDocument } from "pdf-lib";
-import sharp from "sharp";
 import { resolveStoragePath } from "@/lib/instagram/images/storage";
+
+async function getSharp() {
+  const mod = await import("sharp");
+  return mod.default;
+}
 
 export type ArtExportFile = {
   storageKey: string;
@@ -25,6 +29,7 @@ export async function exportArtAsZip(files: ArtExportFile[]): Promise<Buffer> {
 }
 
 export async function exportArtAsJpgZip(files: ArtExportFile[]): Promise<Buffer> {
+  const sharp = await getSharp();
   const zip = new JSZip();
   for (const f of files.sort((a, b) => a.order - b.order)) {
     const buf = await loadPngBuffer(f.storageKey);
@@ -51,6 +56,7 @@ export async function exportArtAsPdf(files: ArtExportFile[]): Promise<Buffer> {
 export async function exportSingleFile(storageKey: string, format: "png" | "jpg"): Promise<{ buffer: Buffer; mime: string; ext: string }> {
   const png = await loadPngBuffer(storageKey);
   if (format === "jpg") {
+    const sharp = await getSharp();
     return { buffer: await sharp(png).jpeg({ quality: 90 }).toBuffer(), mime: "image/jpeg", ext: ".jpg" };
   }
   return { buffer: png, mime: "image/png", ext: ".png" };
