@@ -35,22 +35,53 @@ export function PostArtPanel({ postId, visualFormat, artFiles, onRefresh }: Prop
   async function generateArt() {
     setGenerating(true);
     setMessage(null);
-    const res = await fetch(`/api/admin/instagram/posts/${postId}/art/generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ templateId, format }),
-    });
-    const data = await res.json();
-    setGenerating(false);
-    if (!res.ok) {
-      setMessage(data.error || "Erro ao gerar arte");
-      return;
+    let totalReal = 0;
+    let totalTemplates = 0;
+
+    try {
+      const prepRes = await fetch(`/api/admin/instagram/posts/${postId}/art/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateId, format, prepareOnly: true }),
+      });
+      const prep = await prepRes.json();
+      if (!prepRes.ok) {
+        setMessage(prep.error || "Erro ao preparar carrossel");
+        return;
+      }
+
+      const slideCount = prep.slideCount ?? 6;
+      for (let order = 1; order <= slideCount; order++) {
+        setMessage(`Gerando slide ${order}/${slideCount}...`);
+        const res = await fetch(`/api/admin/instagram/posts/${postId}/art/generate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            templateId,
+            format,
+            slideOrder: order,
+            finalize: order === slideCount,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setMessage(data.error || `Erro no slide ${order}`);
+          return;
+        }
+        totalReal += data.usedRealPhotos ?? 0;
+        totalTemplates += data.usedTemplates ?? 0;
+      }
+
+      setLastStats({ usedRealPhotos: totalReal, usedTemplates: totalTemplates });
+      setMessage(
+        `Arte gerada: ${slideCount} slides · ${totalReal} fotos reais · ${totalTemplates} templates`
+      );
+      onRefresh();
+    } catch {
+      setMessage("Falha de rede ou tempo esgotado. Tente novamente.");
+    } finally {
+      setGenerating(false);
     }
-    setLastStats({ usedRealPhotos: data.usedRealPhotos, usedTemplates: data.usedTemplates });
-    setMessage(
-      `Arte gerada: ${data.files?.length ?? 0} slides · ${data.usedRealPhotos} fotos reais · ${data.usedTemplates} templates`
-    );
-    onRefresh();
   }
 
   function downloadExport(fmt: "png" | "jpg" | "pdf" | "zip") {

@@ -42,5 +42,6 @@ export type GenerateArtResult = {
   usedRealPhotos: number;
   usedTemplates: number;
   skippedAi: boolean;
-  canvaSpec: unknown;
+  slideCount?: number;
+  canvaSpec: unknown | null;
 };

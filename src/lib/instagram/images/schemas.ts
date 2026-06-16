@@ -45,6 +45,15 @@ export const generatePromptsSchema = z.object({
   imageType: imageType.default("CONCEPT"),
 });
 
+export const externalImagesSchema = z.object({
+  urls: z.array(z.string().min(10)).min(1).max(50),
+  category: imageCategory.optional(),
+  description: z.string().min(3).optional(),
+  tags: z.array(z.string()).default([]),
+  status: imageStatus.default("AVAILABLE"),
+  imageType: imageType.default("REAL"),
+});
+
 export const updatePostVisualSchema = z.object({
   visualSource: visualSource.optional(),
   visualFormat: z.string().optional(),

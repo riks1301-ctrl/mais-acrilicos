@@ -2,6 +2,7 @@ import { readFile } from "fs/promises";
 import path from "path";
 import sharp from "sharp";
 import { UPLOAD_PUBLIC_PREFIX } from "@/lib/instagram/images/constants";
+import { fetchImageBuffer } from "@/lib/instagram/images/fetch-buffer";
 import { gradientStops, templateStyleForSlide } from "./templates";
 import type { ArtDimensions, ArtTemplateId, BrandColors, BrandFonts, SlideRenderInput } from "./types";
 
@@ -90,22 +91,27 @@ async function loadImageBuffer(storageKey: string | null, url: string): Promise<
     try {
       return await readFile(path.join(process.cwd(), "public", "uploads", "instagram", key));
     } catch {
-      return null;
+      /* fallthrough */
     }
+  }
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return fetchImageBuffer(url);
   }
   return null;
 }
 
 async function loadLogoDataUri(logoUrl: string | null | undefined): Promise<string | undefined> {
   if (!logoUrl) return undefined;
+  let buf: Buffer | null = null;
   if (logoUrl.startsWith(UPLOAD_PUBLIC_PREFIX)) {
-    const buf = await loadImageBuffer(logoUrl.replace(`${UPLOAD_PUBLIC_PREFIX}/`, ""), logoUrl);
-    if (!buf) return undefined;
-    const meta = await sharp(buf).metadata();
-    const mime = meta.format === "png" ? "image/png" : "image/jpeg";
-    return `data:${mime};base64,${buf.toString("base64")}`;
+    buf = await loadImageBuffer(logoUrl.replace(`${UPLOAD_PUBLIC_PREFIX}/`, ""), logoUrl);
+  } else if (logoUrl.startsWith("http://") || logoUrl.startsWith("https://")) {
+    buf = await fetchImageBuffer(logoUrl, 10_000);
   }
-  return undefined;
+  if (!buf) return undefined;
+  const meta = await sharp(buf).metadata();
+  const mime = meta.format === "png" ? "image/png" : "image/jpeg";
+  return `data:${mime};base64,${buf.toString("base64")}`;
 }
 
 export async function renderSlideArt(opts: {

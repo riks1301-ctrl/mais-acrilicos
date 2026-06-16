@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
+import { put } from "@vercel/blob";
 import { ALLOWED_MIME_TYPES, MAX_IMAGE_SIZE_BYTES, UPLOAD_PUBLIC_PREFIX } from "./constants";
 
 const EXT_BY_MIME: Record<string, string> = {
@@ -72,9 +73,31 @@ export async function saveImageBuffer(
   const ext = EXT_BY_MIME[validated.mime] ?? ".png";
   const id = randomUUID();
   const storageKey = `${id}${ext}`;
-  const uploadDir = path.join(process.cwd(), "public", "uploads", "instagram");
   const safeName = filenamePrefix.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
 
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    const pathname = `instagram/${storageKey}`;
+    const blob = await put(pathname, buffer, {
+      access: "public",
+      contentType: validated.mime,
+      addRandomSuffix: false,
+    });
+    return {
+      storageKey,
+      publicUrl: blob.url,
+      mimeType: validated.mime,
+      fileSize: buffer.length,
+      filename: `${safeName}${ext}`,
+    };
+  }
+
+  if (process.env.VERCEL) {
+    throw new Error(
+      "Armazenamento de imagens não configurado na Vercel. Adicione um Blob Store (Storage → Blob) ao projeto para gerar artes."
+    );
+  }
+
+  const uploadDir = path.join(process.cwd(), "public", "uploads", "instagram");
   await mkdir(uploadDir, { recursive: true });
   await writeFile(path.join(uploadDir, storageKey), buffer);
 

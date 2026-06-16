@@ -4,6 +4,9 @@ import { requireAdminSession } from "@/lib/instagram/auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
+
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const { error } = await requireAdminSession();
   if (error) return error;
