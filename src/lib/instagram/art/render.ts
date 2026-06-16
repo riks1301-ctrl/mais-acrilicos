@@ -5,6 +5,7 @@ import { canUseVercelBlob, instagramBlobPathname, readBlobBuffer } from "@/lib/i
 import { fetchImageBuffer } from "@/lib/instagram/images/fetch-buffer";
 import { isPathInsideRoot } from "@/lib/instagram/drive/local-index";
 import { gradientStops, templateStyleForSlide } from "./templates";
+import { rasterizeSvgToPng } from "./svg-raster";
 import type { ArtDimensions, ArtTemplateId, BrandColors, BrandFonts, SlideRenderInput } from "./types";
 
 async function getSharp() {
@@ -43,7 +44,7 @@ function buildOverlaySvg(
   slide: SlideRenderInput,
   dims: ArtDimensions,
   colors: BrandColors,
-  fonts: BrandFonts,
+  _fonts: BrandFonts,
   templateId: ArtTemplateId,
   companyName: string,
   logoDataUri?: string
@@ -57,10 +58,11 @@ function buildOverlaySvg(
   const pad = 64;
   const bodyY = pad + headlineSize + 36;
   const tspans = bodyLines.map((l, i) => `<tspan x="${pad}" dy="${i === 0 ? 0 : bodySize + 8}">${l}</tspan>`).join("");
+  const fontStack = "DejaVu Sans, Liberation Sans, Arial, sans-serif";
 
   const logoBlock = logoDataUri
     ? `<image href="${logoDataUri}" x="${dims.width - pad - 120}" y="${pad}" width="120" height="48" preserveAspectRatio="xMidYMid meet"/>`
-    : `<text x="${dims.width - pad}" y="${pad + 28}" text-anchor="end" font-family="${fonts.heading}" font-size="22" font-weight="700" fill="${style.headlineColor}">${escXml(companyName)}</text>`;
+    : `<text x="${dims.width - pad}" y="${pad + 28}" text-anchor="end" font-family="${fontStack}" font-size="22" font-weight="700" fill="${style.headlineColor}">${escXml(companyName)}</text>`;
 
   const accentBar = style.accentBar
     ? `<rect x="${pad}" y="${pad - 12}" width="72" height="6" rx="3" fill="${colors.accent}"/>`
@@ -72,14 +74,17 @@ function buildOverlaySvg(
       <stop offset="0%" stop-color="${g0}"/>
       <stop offset="100%" stop-color="${g1}"/>
     </linearGradient>
+    <style type="text/css"><![CDATA[
+      text { font-family: ${fontStack}; }
+    ]]></style>
   </defs>
   <rect width="100%" height="100%" fill="url(#bg)"/>
   <rect width="100%" height="100%" fill="#0f172a" opacity="${1 - style.overlayOpacity}"/>
   ${accentBar}
   ${logoBlock}
-  <text x="${pad}" y="${pad + headlineSize}" font-family="${fonts.heading}" font-size="${headlineSize}" font-weight="800" fill="${style.headlineColor}">${headline}</text>
-  <text x="${pad}" y="${bodyY}" font-family="${fonts.body}" font-size="${bodySize}" fill="${style.bodyColor}">${tspans}</text>
-  <text x="${pad}" y="${dims.height - pad}" font-family="${fonts.body}" font-size="20" fill="${style.bodyColor}" opacity="0.85">@${escXml(companyName.toLowerCase().replace(/\s+/g, ""))} · slide ${slide.order}</text>
+  <text x="${pad}" y="${pad + headlineSize}" font-family="${fontStack}" font-size="${headlineSize}" font-weight="800" fill="${style.headlineColor}">${headline}</text>
+  <text x="${pad}" y="${bodyY}" font-family="${fontStack}" font-size="${bodySize}" fill="${style.bodyColor}">${tspans}</text>
+  <text x="${pad}" y="${dims.height - pad}" font-family="${fontStack}" font-size="20" fill="${style.bodyColor}" opacity="0.85">@${escXml(companyName.toLowerCase().replace(/\s+/g, ""))} · slide ${slide.order}</text>
 </svg>`;
 }
 
@@ -181,14 +186,14 @@ export async function renderSlideArt(opts: {
   if (photoBuf) {
     base = sharp(photoBuf).resize(width, height, { fit: "cover", position: "centre" });
   } else {
-    base = sharp(Buffer.from(overlay)).resize(width, height);
+    const png = await rasterizeSvgToPng(overlay, width, height);
     if (opts.outputMime === "image/jpeg") {
-      return base.jpeg({ quality: 90 }).toBuffer();
+      return sharp(png).jpeg({ quality: 90 }).toBuffer();
     }
-    return base.png().toBuffer();
+    return png;
   }
 
-  const overlayBuf = await sharp(Buffer.from(overlay)).png().toBuffer();
+  const overlayBuf = await rasterizeSvgToPng(overlay, width, height);
   const composed = await base
     .composite([{ input: overlayBuf, top: 0, left: 0 }])
     .toBuffer();

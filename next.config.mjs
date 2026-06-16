@@ -1,9 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ["sharp"],
+    serverComponentsExternalPackages: ["sharp", "@resvg/resvg-js"],
     outputFileTracingIncludes: {
-      "/api/**": ["./node_modules/sharp/**/*", "./node_modules/@img/**/*"],
+      "/api/**": [
+        "./node_modules/sharp/**/*",
+        "./node_modules/@img/**/*",
+        "./node_modules/@resvg/**/*",
+      ],
     },
   },
   images: {

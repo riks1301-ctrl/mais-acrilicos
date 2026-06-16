@@ -240,6 +240,11 @@ export function PostArtPanel({ postId, visualFormat, artFiles, artGen: initialAr
       {lastStats && (
         <p className="text-xs text-slate-500">
           Motor visual: {lastStats.usedRealPhotos} foto(s) real(is), {lastStats.usedTemplates} template(s) de marca.
+          {lastStats.usedRealPhotos === 0 && (
+            <span className="block mt-1 text-amber-800">
+              Sem fotos na biblioteca vinculadas ao post — os slides usam só cores da marca. Sincronize o Drive ou vincule imagens no post para fundos com foto real.
+            </span>
+          )}
         </p>
       )}
 
