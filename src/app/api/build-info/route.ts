@@ -10,5 +10,7 @@ export async function GET() {
     hasMetaAccessTokenEnv: !!process.env.META_ACCESS_TOKEN,
     metaTokenLooksLikeIg: process.env.META_ACCESS_TOKEN?.trim().startsWith("IG") ?? false,
     metaTokenLooksLikeStripe: process.env.META_ACCESS_TOKEN?.trim().startsWith("sk_") ?? false,
+    blobStoreId: process.env.BLOB_STORE_ID ?? null,
+    blobReady: !!(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID),
   });
 }

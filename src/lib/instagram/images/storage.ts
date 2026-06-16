@@ -56,6 +56,13 @@ export function validateImageFile(file: File): { ok: true } | { ok: false; error
   return { ok: true };
 }
 
+function canUseVercelBlob(): boolean {
+  if (process.env.BLOB_READ_WRITE_TOKEN) return true;
+  // Store conectado ao projeto na Vercel (OIDC + BLOB_STORE_ID)
+  if (process.env.VERCEL && process.env.BLOB_STORE_ID) return true;
+  return false;
+}
+
 export async function saveImageBuffer(
   buffer: Buffer,
   mime: string,
@@ -75,12 +82,13 @@ export async function saveImageBuffer(
   const storageKey = `${id}${ext}`;
   const safeName = filenamePrefix.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
 
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
+  if (canUseVercelBlob()) {
     const pathname = `instagram/${storageKey}`;
     const blob = await put(pathname, buffer, {
       access: "public",
       contentType: validated.mime,
       addRandomSuffix: false,
+      ...(process.env.BLOB_STORE_ID ? { storeId: process.env.BLOB_STORE_ID } : {}),
     });
     return {
       storageKey,
