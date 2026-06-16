@@ -7,14 +7,12 @@ import { isPathInsideRoot } from "@/lib/instagram/drive/local-index";
 import { gradientStops, templateStyleForSlide } from "./templates";
 import { rasterizeSvgToPng } from "./svg-raster";
 import type { ArtDimensions, ArtTemplateId, BrandColors, BrandFonts, SlideRenderInput } from "./types";
+import { escXml, escXmlAttr } from "./xml";
+import { validateImageBuffer } from "@/lib/instagram/images/storage";
 
 async function getSharp() {
   const mod = await import("sharp");
   return mod.default;
-}
-
-function escXml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 function truncate(s: string, max: number): string {
@@ -61,18 +59,18 @@ function buildOverlaySvg(
   const fontStack = "DejaVu Sans, Liberation Sans, Arial, sans-serif";
 
   const logoBlock = logoDataUri
-    ? `<image href="${logoDataUri}" x="${dims.width - pad - 120}" y="${pad}" width="120" height="48" preserveAspectRatio="xMidYMid meet"/>`
-    : `<text x="${dims.width - pad}" y="${pad + 28}" text-anchor="end" font-family="${fontStack}" font-size="22" font-weight="700" fill="${style.headlineColor}">${escXml(companyName)}</text>`;
+    ? `<image href="${escXmlAttr(logoDataUri)}" x="${dims.width - pad - 120}" y="${pad}" width="120" height="48" preserveAspectRatio="xMidYMid meet"/>`
+    : `<text x="${dims.width - pad}" y="${pad + 28}" text-anchor="end" font-family="${fontStack}" font-size="22" font-weight="700" fill="${escXmlAttr(style.headlineColor)}">${escXml(companyName)}</text>`;
 
   const accentBar = style.accentBar
-    ? `<rect x="${pad}" y="${pad - 12}" width="72" height="6" rx="3" fill="${colors.accent}"/>`
+    ? `<rect x="${pad}" y="${pad - 12}" width="72" height="6" rx="3" fill="${escXmlAttr(colors.accent)}"/>`
     : "";
 
   return `<svg width="${dims.width}" height="${dims.height}" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="${g0}"/>
-      <stop offset="100%" stop-color="${g1}"/>
+      <stop offset="0%" stop-color="${escXmlAttr(g0)}"/>
+      <stop offset="100%" stop-color="${escXmlAttr(g1)}"/>
     </linearGradient>
     <style type="text/css"><![CDATA[
       text { font-family: ${fontStack}; }
@@ -82,9 +80,9 @@ function buildOverlaySvg(
   <rect width="100%" height="100%" fill="#0f172a" opacity="${1 - style.overlayOpacity}"/>
   ${accentBar}
   ${logoBlock}
-  <text x="${pad}" y="${pad + headlineSize}" font-family="${fontStack}" font-size="${headlineSize}" font-weight="800" fill="${style.headlineColor}">${headline}</text>
-  <text x="${pad}" y="${bodyY}" font-family="${fontStack}" font-size="${bodySize}" fill="${style.bodyColor}">${tspans}</text>
-  <text x="${pad}" y="${dims.height - pad}" font-family="${fontStack}" font-size="20" fill="${style.bodyColor}" opacity="0.85">@${escXml(companyName.toLowerCase().replace(/\s+/g, ""))} · slide ${slide.order}</text>
+  <text x="${pad}" y="${pad + headlineSize}" font-family="${fontStack}" font-size="${headlineSize}" font-weight="800" fill="${escXmlAttr(style.headlineColor)}">${headline}</text>
+  <text x="${pad}" y="${bodyY}" font-family="${fontStack}" font-size="${bodySize}" fill="${escXmlAttr(style.bodyColor)}">${tspans}</text>
+  <text x="${pad}" y="${dims.height - pad}" font-family="${fontStack}" font-size="20" fill="${escXmlAttr(style.bodyColor)}" opacity="0.85">@${escXml(companyName.toLowerCase().replace(/\s+/g, ""))} · slide ${slide.order}</text>
 </svg>`;
 }
 
@@ -104,15 +102,17 @@ async function loadImageBuffer(
     }
   }
   if (storageKey) {
+    if (canUseVercelBlob()) {
+      const fromBlob = await readBlobBuffer(instagramBlobPathname(storageKey), "private");
+      if (fromBlob) return fromBlob;
+      const fromBlobPublic = await readBlobBuffer(instagramBlobPathname(storageKey), "public");
+      if (fromBlobPublic) return fromBlobPublic;
+    }
     const p = path.join(process.cwd(), "public", "uploads", "instagram", storageKey);
     try {
       return await readFile(p);
     } catch {
       /* fallthrough */
-    }
-    if (canUseVercelBlob()) {
-      const fromBlob = await readBlobBuffer(instagramBlobPathname(storageKey), "private");
-      if (fromBlob) return fromBlob;
     }
   }
   if (url.includes("/api/admin/instagram/media/blob?key=")) {
@@ -146,9 +146,8 @@ async function loadLogoDataUri(logoUrl: string | null | undefined): Promise<stri
   }
   if (!buf) return undefined;
   const sharp = await getSharp();
-  const meta = await sharp(buf).metadata();
-  const mime = meta.format === "png" ? "image/png" : "image/jpeg";
-  return `data:${mime};base64,${buf.toString("base64")}`;
+  const png = await sharp(buf).png().toBuffer();
+  return `data:image/png;base64,${png.toString("base64")}`;
 }
 
 export async function renderSlideArt(opts: {
@@ -178,10 +177,15 @@ export async function renderSlideArt(opts: {
   const { width, height } = opts.dims;
   let base;
 
-  const photoBuf =
+  let photoBuf =
     opts.photoStorageKey || opts.photoUrl || opts.photoLocalPath
       ? await loadImageBuffer(opts.photoStorageKey ?? null, opts.photoUrl ?? "", opts.photoLocalPath)
       : null;
+
+  if (photoBuf) {
+    const valid = validateImageBuffer(photoBuf, "");
+    if (!valid.ok) photoBuf = null;
+  }
 
   if (photoBuf) {
     base = sharp(photoBuf).resize(width, height, { fit: "cover", position: "centre" });
