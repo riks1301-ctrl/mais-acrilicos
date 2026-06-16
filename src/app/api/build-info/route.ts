@@ -1,3 +1,5 @@
+import { blobAccessMode, canUseVercelBlob } from "@/lib/instagram/images/blob";
+
 export const dynamic = "force-dynamic";
 
 export async function GET() {
@@ -11,6 +13,7 @@ export async function GET() {
     metaTokenLooksLikeIg: process.env.META_ACCESS_TOKEN?.trim().startsWith("IG") ?? false,
     metaTokenLooksLikeStripe: process.env.META_ACCESS_TOKEN?.trim().startsWith("sk_") ?? false,
     blobStoreId: process.env.BLOB_STORE_ID ?? null,
+    blobAccess: canUseVercelBlob() ? blobAccessMode() : null,
     blobReady: !!(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID),
   });
 }

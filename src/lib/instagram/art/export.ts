@@ -1,7 +1,6 @@
-import { readFile } from "fs/promises";
 import JSZip from "jszip";
 import { PDFDocument } from "pdf-lib";
-import { resolveStoragePath } from "@/lib/instagram/images/storage";
+import { loadStorageBuffer } from "@/lib/instagram/images/blob";
 
 async function getSharp() {
   const mod = await import("sharp");
@@ -16,7 +15,7 @@ export type ArtExportFile = {
 };
 
 async function loadPngBuffer(storageKey: string): Promise<Buffer> {
-  return readFile(resolveStoragePath(storageKey));
+  return loadStorageBuffer(storageKey);
 }
 
 export async function exportArtAsZip(files: ArtExportFile[]): Promise<Buffer> {

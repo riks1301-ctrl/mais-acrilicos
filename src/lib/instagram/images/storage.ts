@@ -1,8 +1,13 @@
 import { randomUUID } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
-import { put } from "@vercel/blob";
 import { ALLOWED_MIME_TYPES, MAX_IMAGE_SIZE_BYTES, UPLOAD_PUBLIC_PREFIX } from "./constants";
+import {
+  canUseVercelBlob,
+  instagramBlobPathname,
+  putInstagramBlob,
+  resolveStoredImageUrl,
+} from "./blob";
 
 const EXT_BY_MIME: Record<string, string> = {
   "image/jpeg": ".jpg",
@@ -56,13 +61,6 @@ export function validateImageFile(file: File): { ok: true } | { ok: false; error
   return { ok: true };
 }
 
-function canUseVercelBlob(): boolean {
-  if (process.env.BLOB_READ_WRITE_TOKEN) return true;
-  // Store conectado ao projeto na Vercel (OIDC + BLOB_STORE_ID)
-  if (process.env.VERCEL && process.env.BLOB_STORE_ID) return true;
-  return false;
-}
-
 export async function saveImageBuffer(
   buffer: Buffer,
   mime: string,
@@ -83,26 +81,19 @@ export async function saveImageBuffer(
   const safeName = filenamePrefix.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
 
   if (canUseVercelBlob()) {
-    const pathname = `instagram/${storageKey}`;
+    const pathname = instagramBlobPathname(storageKey);
     try {
-      const blob = await put(pathname, buffer, {
-        access: "public",
-        contentType: validated.mime,
-        addRandomSuffix: false,
-        ...(process.env.BLOB_STORE_ID ? { storeId: process.env.BLOB_STORE_ID } : {}),
-      });
+      const blob = await putInstagramBlob(pathname, buffer, validated.mime);
       return {
         storageKey,
-        publicUrl: blob.url,
+        publicUrl: resolveStoredImageUrl(storageKey, blob.url),
         mimeType: validated.mime,
         fileSize: buffer.length,
         filename: `${safeName}${ext}`,
       };
     } catch (e) {
       const detail = e instanceof Error ? e.message : String(e);
-      throw new Error(
-        `Falha ao gravar no Vercel Blob: ${detail}. Confirme que o store está conectado ao projeto e faça redeploy.`
-      );
+      throw new Error(`Falha ao gravar no Vercel Blob: ${detail}`);
     }
   }
 

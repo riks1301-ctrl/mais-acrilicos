@@ -1,6 +1,8 @@
 import type { InstagramImage } from "@prisma/client";
+import { canUseVercelBlob, isPrivateBlobUrl } from "@/lib/instagram/images/blob";
 import { googleDriveDirectUrl } from "@/lib/instagram/images/drive";
 import { fetchImageBuffer } from "@/lib/instagram/images/fetch-buffer";
+import { publicMediaUrl } from "@/lib/instagram/images/media-token";
 import { saveImageBuffer } from "@/lib/instagram/images/storage";
 import { prisma } from "@/lib/prisma";
 import { readFile } from "fs/promises";
@@ -16,8 +18,14 @@ export type MetaUrlCheck = {
 export function checkMetaImageUrl(url: string | null | undefined): MetaUrlCheck {
   if (!url) return { ok: false, url: null, reason: "URL ausente." };
   if (!url.startsWith("https://")) return { ok: false, url, reason: "A Meta exige URL HTTPS pública." };
+  if (url.includes("/api/instagram/media/")) {
+    return { ok: true, url, reason: "URL pública assinada para publicação na Meta." };
+  }
   if (url.includes("drive.google.com") && !url.includes("uc?export=") && !url.includes("blob.vercel-storage.com")) {
     return { ok: false, url, reason: "Link do Drive precisa ser público ou use cópia temporária na publicação." };
+  }
+  if (isPrivateBlobUrl(url)) {
+    return { ok: false, url, reason: "Blob privado — gere URL de publicação antes de enviar à Meta." };
   }
   return { ok: true, url, reason: "URL HTTPS válida para tentativa de publicação." };
 }
@@ -51,7 +59,7 @@ export async function ensureMetaPublishUrl(imageId: string): Promise<string> {
   }
 
   const directCheck = checkMetaImageUrl(image.url);
-  if (directCheck.ok && image.sourceProvider === "upload") {
+  if (directCheck.ok && image.sourceProvider === "upload" && !isPrivateBlobUrl(image.url)) {
     await prisma.instagramImage.update({
       where: { id: imageId },
       data: { metaPublishUrl: image.url, metaPublishReady: true },
@@ -59,16 +67,31 @@ export async function ensureMetaPublishUrl(imageId: string): Promise<string> {
     return image.url;
   }
 
+  if (image.storageKey && canUseVercelBlob()) {
+    const signed = await publicMediaUrl(imageId);
+    await prisma.instagramImage.update({
+      where: { id: imageId },
+      data: { metaPublishUrl: signed, metaPublishReady: true },
+    });
+    return signed;
+  }
+
   const buffer = await loadImageBytes(image);
   const mime = image.mimeType ?? "image/jpeg";
   const saved = await saveImageBuffer(buffer, mime, `meta-publish-${imageId}`);
+  const publishUrl = canUseVercelBlob() ? await publicMediaUrl(imageId) : saved.publicUrl;
 
   await prisma.instagramImage.update({
     where: { id: imageId },
-    data: { metaPublishUrl: saved.publicUrl, metaPublishReady: true },
+    data: {
+      url: saved.publicUrl,
+      storageKey: saved.storageKey,
+      metaPublishUrl: publishUrl,
+      metaPublishReady: true,
+    },
   });
 
-  return saved.publicUrl;
+  return publishUrl;
 }
 
 export function resolvePreviewUrl(

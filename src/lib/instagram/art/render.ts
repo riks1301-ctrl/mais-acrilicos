@@ -1,6 +1,7 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import { UPLOAD_PUBLIC_PREFIX } from "@/lib/instagram/images/constants";
+import { canUseVercelBlob, instagramBlobPathname, readBlobBuffer } from "@/lib/instagram/images/blob";
 import { fetchImageBuffer } from "@/lib/instagram/images/fetch-buffer";
 import { isPathInsideRoot } from "@/lib/instagram/drive/local-index";
 import { gradientStops, templateStyleForSlide } from "./templates";
@@ -103,6 +104,17 @@ async function loadImageBuffer(
       return await readFile(p);
     } catch {
       /* fallthrough */
+    }
+    if (canUseVercelBlob()) {
+      const fromBlob = await readBlobBuffer(instagramBlobPathname(storageKey), "private");
+      if (fromBlob) return fromBlob;
+    }
+  }
+  if (url.includes("/api/admin/instagram/media/blob?key=")) {
+    const key = new URL(url, "http://local").searchParams.get("key");
+    if (key && canUseVercelBlob()) {
+      const fromBlob = await readBlobBuffer(instagramBlobPathname(key), "private");
+      if (fromBlob) return fromBlob;
     }
   }
   if (url.startsWith(UPLOAD_PUBLIC_PREFIX)) {
