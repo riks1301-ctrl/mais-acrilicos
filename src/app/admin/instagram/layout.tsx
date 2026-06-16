@@ -10,6 +10,7 @@ const nav = [
   { label: "Posts", href: "/admin/instagram/posts" },
   { label: "Aprovação", href: "/admin/instagram/aprovacao" },
   { label: "Imagens", href: "/admin/instagram/imagens" },
+  { label: "Google Drive", href: "/admin/instagram/drive" },
   { label: "Calendário", href: "/admin/instagram/calendario" },
   { label: "Meta API", href: "/admin/instagram/meta" },
   { label: "Performance", href: "/admin/instagram/performance" },

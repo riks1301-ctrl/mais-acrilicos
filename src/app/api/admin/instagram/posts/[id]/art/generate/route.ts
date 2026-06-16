@@ -1,6 +1,15 @@
 import { generateCompleteArt } from "@/lib/instagram/art/generate";
 import { generateArtSchema } from "@/lib/instagram/art/schemas";
+import {
+  beginArtGeneration,
+  completeArtGeneration,
+  failArtGeneration,
+  recoverStaleArtGeneration,
+  resetArtGeneration,
+  updateArtGenerationProgress,
+} from "@/lib/instagram/art/status";
 import { requireAdminSession } from "@/lib/instagram/auth";
+import { logPublication } from "@/lib/instagram/persistence";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -11,14 +20,56 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const { error } = await requireAdminSession();
   if (error) return error;
 
+  const postId = params.id;
+
   try {
+    await recoverStaleArtGeneration(postId);
+
     const body = req.headers.get("content-length") === "0" ? {} : await req.json();
     const input = generateArtSchema.parse(body);
-    const result = await generateCompleteArt(params.id, input);
-    return NextResponse.json(result, { status: 201 });
+
+    if (input.reset) {
+      await resetArtGeneration(postId);
+      return NextResponse.json({ ok: true, artGenStatus: "IDLE" });
+    }
+
+    if (input.prepareOnly) {
+      const result = await generateCompleteArt(postId, input);
+      return NextResponse.json(result);
+    }
+
+    if (input.slideOrder === 1) {
+      const prep = await generateCompleteArt(postId, { ...input, prepareOnly: true });
+      await beginArtGeneration(postId, prep.slideCount ?? 6);
+    }
+
+    const result = await generateCompleteArt(postId, input);
+
+    if (input.slideOrder) {
+      await updateArtGenerationProgress(postId, input.slideOrder);
+    }
+
+    if (input.finalize) {
+      await completeArtGeneration(postId, true);
+    }
+
+    const post = await recoverStaleArtGeneration(postId);
+
+    return NextResponse.json({ ...result, artGen: post }, { status: 201 });
   } catch (e) {
-    if (e instanceof z.ZodError) return NextResponse.json({ error: e.errors[0].message }, { status: 400 });
-    if (e instanceof Error) return NextResponse.json({ error: e.message }, { status: 500 });
-    return NextResponse.json({ error: "Erro ao gerar arte" }, { status: 500 });
+    const message = e instanceof z.ZodError ? e.errors[0].message : e instanceof Error ? e.message : "Erro ao gerar arte";
+    await failArtGeneration(postId, message);
+    await logPublication(postId, "art_generation_failed", { error: message }).catch(() => null);
+
+    if (e instanceof z.ZodError) return NextResponse.json({ error: message, artGenStatus: "FAILED" }, { status: 400 });
+    return NextResponse.json({ error: message, artGenStatus: "FAILED" }, { status: 500 });
   }
+}
+
+export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
+  const artGen = await recoverStaleArtGeneration(params.id);
+  return NextResponse.json({ artGen });
 }

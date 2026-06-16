@@ -355,8 +355,66 @@ Métricas negadas pela API ficam `null` e entram em `unavailableMetrics` — nun
 
 | Rota | Função |
 |------|--------|
-| `POST /api/admin/instagram/posts/[id]/art/generate` | Renderiza slides e salva na biblioteca |
+| `POST /api/admin/instagram/posts/[id]/art/generate` | Renderiza slides (status GENERATING→READY/FAILED) |
+| `GET /api/admin/instagram/posts/[id]/art/generate` | Consulta status da geração |
 | `GET /api/admin/instagram/posts/[id]/art/export?format=zip\|jpg\|pdf` | Download dos arquivos |
+
+### Status da geração (nunca trava em "gerando")
+
+- `IDLE` — pronto para gerar
+- `GENERATING` — em andamento (progresso por slide)
+- `READY` — artes salvas
+- `FAILED` — erro registrado + botão **Tentar novamente**
+- Timeout automático após 5 min em `GENERATING` → `FAILED`
+
+### Requisito Vercel
+
+- Crie **Blob Store** no projeto Vercel para salvar artes geradas (`BLOB_READ_WRITE_TOKEN`)
+
+---
+
+## Etapa 8 — Google Drive (biblioteca sem upload)
+
+### Painel
+
+`/admin/instagram/drive` — configurar Folder ID, sincronizar, grid com filtros, vincular ao post.
+
+### Modos
+
+| Ambiente | Como funciona |
+|----------|----------------|
+| **Dev (Windows)** | `GOOGLE_DRIVE_LOCAL_PATH` aponta para pasta sincronizada do Drive. Indexa sem copiar arquivos. |
+| **Produção** | Google Drive API + `GOOGLE_DRIVE_FOLDER_ID` + service account com acesso à pasta. |
+
+### Variáveis
+
+```
+GOOGLE_DRIVE_FOLDER_ID=
+GOOGLE_SERVICE_ACCOUNT_JSON=
+GOOGLE_DRIVE_LOCAL_PATH=   # dev
+BLOB_READ_WRITE_TOKEN=     # cópia HTTPS só na publicação Meta
+```
+
+### Publicação Meta
+
+- Drive/local = catálogo apenas (sem upload)
+- Na publicação, `ensureMetaPublishUrl` copia para Blob se a URL não for HTTPS pública
+- Painel avisa se imagem não está pronta para Meta antes de publicar
+
+### APIs
+
+| Rota | Função |
+|------|--------|
+| `GET/PUT /api/admin/instagram/drive` | Config + listagem |
+| `POST /api/admin/instagram/drive/sync` | Sincronizar catálogo |
+| `POST /api/admin/instagram/drive/link` | Vincular imagem ao post (cover) |
+| `GET /api/admin/instagram/media/local` | Preview dev (pasta local) |
+
+### Script local
+
+```bash
+GOOGLE_DRIVE_LOCAL_PATH="G:\...\Fotos" npm run db:sync-drive-local
+```
 
 ### Migration
 

@@ -4,6 +4,8 @@ export type ImageCandidate = {
   id: string;
   url: string;
   storageKey: string | null;
+  localPath?: string | null;
+  sourceProvider?: string;
   imageType: IgImageType;
   isRealPhoto: boolean;
   isGenerated: boolean;

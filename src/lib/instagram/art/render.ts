@@ -3,6 +3,7 @@ import path from "path";
 import sharp from "sharp";
 import { UPLOAD_PUBLIC_PREFIX } from "@/lib/instagram/images/constants";
 import { fetchImageBuffer } from "@/lib/instagram/images/fetch-buffer";
+import { isPathInsideRoot } from "@/lib/instagram/drive/local-index";
 import { gradientStops, templateStyleForSlide } from "./templates";
 import type { ArtDimensions, ArtTemplateId, BrandColors, BrandFonts, SlideRenderInput } from "./types";
 
@@ -77,7 +78,21 @@ function buildOverlaySvg(
 </svg>`;
 }
 
-async function loadImageBuffer(storageKey: string | null, url: string): Promise<Buffer | null> {
+async function loadImageBuffer(
+  storageKey: string | null,
+  url: string,
+  localPath?: string | null
+): Promise<Buffer | null> {
+  if (localPath && process.env.GOOGLE_DRIVE_LOCAL_PATH) {
+    const root = process.env.GOOGLE_DRIVE_LOCAL_PATH;
+    if (isPathInsideRoot(localPath, root)) {
+      try {
+        return await readFile(path.resolve(localPath));
+      } catch {
+        /* fallthrough */
+      }
+    }
+  }
   if (storageKey) {
     const p = path.join(process.cwd(), "public", "uploads", "instagram", storageKey);
     try {
@@ -124,6 +139,7 @@ export async function renderSlideArt(opts: {
   logoUrl?: string | null;
   photoStorageKey?: string | null;
   photoUrl?: string;
+  photoLocalPath?: string | null;
   outputMime: "image/png" | "image/jpeg";
 }): Promise<Buffer> {
   const overlay = buildOverlaySvg(
@@ -140,8 +156,8 @@ export async function renderSlideArt(opts: {
   let base: sharp.Sharp;
 
   const photoBuf =
-    opts.photoStorageKey || opts.photoUrl
-      ? await loadImageBuffer(opts.photoStorageKey ?? null, opts.photoUrl ?? "")
+    opts.photoStorageKey || opts.photoUrl || opts.photoLocalPath
+      ? await loadImageBuffer(opts.photoStorageKey ?? null, opts.photoUrl ?? "", opts.photoLocalPath)
       : null;
 
   if (photoBuf) {

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { logPublication } from "@/lib/instagram/persistence";
+import { ensureMetaPublishUrl } from "@/lib/instagram/drive/meta-publish";
 import { sanitizeMetaError, parseMetaError } from "./errors";
 import { loadMetaConfig } from "./config";
 import { checkPostPublishEligibility } from "./eligibility";
@@ -58,7 +59,24 @@ export async function publishSingleImagePost(
     return { ok: false, testMode: config.mode === "TEST", error };
   }
 
-  const imageUrl = eligibility.imageUrl!;
+  const cover =
+    post.postImages.find((pi) => pi.role === "cover") ??
+    post.postImages.sort((a, b) => a.order - b.order)[0];
+
+  let imageUrl = eligibility.imageUrl!;
+  if (cover?.image.id) {
+    try {
+      imageUrl = await ensureMetaPublishUrl(cover.image.id);
+    } catch (e) {
+      const err = e instanceof Error ? e.message : "Falha ao preparar imagem para Meta";
+      await prisma.instagramPost.update({
+        where: { id: postId },
+        data: { metaPublishError: err, metaLastPublishAttempt: new Date() },
+      });
+      return { ok: false, testMode: config.mode === "TEST", error: err };
+    }
+  }
+
   const caption = eligibility.caption!;
 
   await prisma.instagramPost.update({

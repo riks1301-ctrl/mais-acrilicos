@@ -43,6 +43,10 @@ type Post = {
   critiqueNotes: string | null;
   visualSource: IgVisualSource | null;
   visualFormat: string | null;
+  artGenStatus: import("@prisma/client").IgArtGenStatus;
+  artGenError: string | null;
+  artGenProgress: number;
+  artGenTotal: number;
   captions: InstagramCaption[];
   imagePrompts: InstagramImagePrompt[];
   postImages: PostImage[];
@@ -184,6 +188,12 @@ export function PostDetail({ id }: { id: string }) {
       <PostArtPanel
         postId={id}
         visualFormat={post.visualFormat}
+        artGen={{
+          artGenStatus: post.artGenStatus,
+          artGenError: post.artGenError,
+          artGenProgress: post.artGenProgress,
+          artGenTotal: post.artGenTotal,
+        }}
         artFiles={post.postImages
           .filter((pi) => ["cover", "slide", "art"].includes(pi.role))
           .map((pi) => ({

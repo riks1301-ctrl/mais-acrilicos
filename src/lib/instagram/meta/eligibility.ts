@@ -1,8 +1,20 @@
 import type { InstagramPost } from "@prisma/client";
 import { loadMetaConfig, validateMetaConfig } from "./config";
+import { checkMetaImageUrl } from "@/lib/instagram/drive/meta-publish";
 
 type PostWithMedia = InstagramPost & {
-  postImages: { role: string; order: number; image: { url: string; status: string } }[];
+  postImages: {
+    role: string;
+    order: number;
+    image: {
+      id: string;
+      url: string;
+      status: string;
+      sourceProvider?: string;
+      metaPublishReady?: boolean;
+      metaPublishUrl?: string | null;
+    };
+  }[];
   carousel: { id: string; slides?: unknown[] } | null;
 };
 
@@ -101,9 +113,27 @@ export async function checkPostPublishEligibility(
   let imageUrl: string | undefined;
   if (cover) {
     if (cover.image.status === "ARCHIVED") errors.push("Imagem principal está arquivada.");
-    const absolute = absolutePublicUrl(cover.image.url);
-    if (!absolute) errors.push("URL da imagem deve ser HTTPS pública acessível pela Meta (configure NEXT_PUBLIC_SITE_URL).");
-    else imageUrl = absolute;
+
+    const publishUrl = cover.image.metaPublishReady && cover.image.metaPublishUrl ? cover.image.metaPublishUrl : cover.image.url;
+    const metaCheck = checkMetaImageUrl(publishUrl);
+    const absolute = absolutePublicUrl(publishUrl);
+
+    if (cover.image.sourceProvider === "google_drive" || cover.image.sourceProvider === "local_dev") {
+      if (!metaCheck.ok) {
+        warnings.push(
+          `${metaCheck.reason} Na publicação, o sistema criará cópia HTTPS temporária (Blob) automaticamente.`
+        );
+      }
+    }
+
+    if (!absolute && cover.image.sourceProvider === "upload") {
+      errors.push("URL da imagem deve ser HTTPS pública acessível pela Meta (configure NEXT_PUBLIC_SITE_URL).");
+    } else if (absolute) {
+      imageUrl = absolute;
+    } else if (cover.image.sourceProvider !== "upload") {
+      warnings.push("URL de preview local/Drive — será resolvida na hora da publicação.");
+      imageUrl = publishUrl.startsWith("https://") ? publishUrl : undefined;
+    }
   }
 
   if (post.status === "PUBLISHED" && post.instagramMediaId) {

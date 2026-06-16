@@ -14,6 +14,8 @@ function toCandidate(img: {
   id: string;
   url: string;
   storageKey: string | null;
+  localPath?: string | null;
+  sourceProvider?: string;
   imageType: ImageCandidate["imageType"];
   isRealPhoto: boolean;
   isGenerated: boolean;
@@ -23,6 +25,8 @@ function toCandidate(img: {
     id: img.id,
     url: img.url,
     storageKey: img.storageKey,
+    localPath: img.localPath,
+    sourceProvider: img.sourceProvider,
     imageType: img.imageType,
     isRealPhoto: img.isRealPhoto,
     isGenerated: img.isGenerated,
@@ -164,6 +168,7 @@ export async function generateCompleteArt(
       logoUrl: brand.logoUrl,
       photoStorageKey: pick.image?.storageKey,
       photoUrl: pick.image?.url,
+      photoLocalPath: pick.image?.localPath,
       outputMime: "image/png",
     });
 

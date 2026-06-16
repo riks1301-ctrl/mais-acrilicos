@@ -206,6 +206,13 @@ enum IgImageStatus {
   ARCHIVED
 }
 
+enum IgArtGenStatus {
+  IDLE
+  GENERATING
+  READY
+  FAILED
+}
+
 enum IgImageType {
   REAL
   MOCKUP
@@ -269,6 +276,11 @@ model InstagramBrandConfig {
   metaTokenExpiresAt DateTime?
   metaLastError      String?           @db.Text
   metaLastValidatedAt DateTime?
+  googleDriveFolderId String?
+  googleDriveLocalPath String?
+  googleDriveLastSyncAt DateTime?
+  googleDriveLastSyncError String?      @db.Text
+  googleDriveSyncCount Int              @default(0)
   personas           InstagramPersona[]
   campaigns          InstagramCampaign[]
   posts              InstagramPost[]
@@ -339,6 +351,12 @@ model InstagramPost {
   critiqueNotes    String?              @db.Text
   visualSource     IgVisualSource?
   visualFormat     String?
+  artGenStatus     IgArtGenStatus       @default(IDLE)
+  artGenError      String?              @db.Text
+  artGenStartedAt  DateTime?
+  artGenFinishedAt DateTime?
+  artGenProgress   Int                  @default(0)
+  artGenTotal      Int                  @default(0)
   brandConfigId    String
   brandConfig      InstagramBrandConfig @relation(fields: [brandConfigId], references: [id], onDelete: Cascade)
   campaignId       String?
@@ -413,6 +431,15 @@ model InstagramImage {
   isConcept       Boolean                  @default(false)
   format          String?
   altText         String?
+  sourceProvider  String               @default("upload")
+  driveFileId     String?
+  driveFolderPath String?
+  localPath       String?
+  thumbnailUrl    String?
+  webViewLink     String?
+  webContentLink  String?
+  metaPublishUrl  String?
+  metaPublishReady Boolean             @default(false)
   postImages      InstagramPostImage[]
   carouselSlides  InstagramCarouselSlide[]
   createdAt       DateTime                 @default(now())
@@ -420,6 +447,8 @@ model InstagramImage {
 
   @@index([brandConfigId, status, category])
   @@index([status])
+  @@index([driveFileId])
+  @@index([sourceProvider])
 }
 
 model InstagramPostImage {

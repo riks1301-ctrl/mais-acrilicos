@@ -6,6 +6,7 @@ export const generateArtSchema = z.object({
   slideOrder: z.number().int().min(1).max(6).optional(),
   prepareOnly: z.boolean().optional(),
   finalize: z.boolean().optional(),
+  reset: z.boolean().optional(),
 });
 
 export const exportArtSchema = z.object({
