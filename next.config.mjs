@@ -2,6 +2,9 @@
 const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ["sharp"],
+    outputFileTracingIncludes: {
+      "/api/**": ["./node_modules/sharp/**/*", "./node_modules/@img/**/*"],
+    },
   },
   images: {
     formats: ["image/avif", "image/webp"],

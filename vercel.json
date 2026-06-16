@@ -1,4 +1,5 @@
 {
+  "installCommand": "npm install --include=optional",
   "crons": [
     {
       "path": "/api/admin/instagram/publish/run-due?limit=5",
