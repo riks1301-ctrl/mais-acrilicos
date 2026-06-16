@@ -10,6 +10,18 @@ export function canUseVercelBlob(): boolean {
   return false;
 }
 
+/** Vercel/serverless não permite gravar em public/uploads. */
+export function isReadOnlyServerRuntime(): boolean {
+  if (process.env.VERCEL === "1" || process.env.VERCEL === "true") return true;
+  if (process.cwd().startsWith("/var/task")) return true;
+  if (process.env.AWS_LAMBDA_FUNCTION_NAME) return true;
+  return false;
+}
+
+export function shouldUseBlobStorage(): boolean {
+  return canUseVercelBlob() || isReadOnlyServerRuntime();
+}
+
 export function blobAccessMode(): "public" | "private" {
   const configured = process.env.BLOB_ACCESS?.toLowerCase();
   if (configured === "public" || configured === "private") return configured;

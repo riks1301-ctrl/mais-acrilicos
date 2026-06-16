@@ -5,8 +5,10 @@ import { ALLOWED_MIME_TYPES, MAX_IMAGE_SIZE_BYTES, UPLOAD_PUBLIC_PREFIX } from "
 import {
   canUseVercelBlob,
   instagramBlobPathname,
+  isReadOnlyServerRuntime,
   putInstagramBlob,
   resolveStoredImageUrl,
+  shouldUseBlobStorage,
 } from "./blob";
 
 const EXT_BY_MIME: Record<string, string> = {
@@ -80,7 +82,7 @@ export async function saveImageBuffer(
   const storageKey = `${id}${ext}`;
   const safeName = filenamePrefix.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
 
-  if (canUseVercelBlob()) {
+  if (shouldUseBlobStorage()) {
     const pathname = instagramBlobPathname(storageKey);
     try {
       const blob = await putInstagramBlob(pathname, buffer, validated.mime);
@@ -93,14 +95,15 @@ export async function saveImageBuffer(
       };
     } catch (e) {
       const detail = e instanceof Error ? e.message : String(e);
+      if (isReadOnlyServerRuntime()) {
+        throw new Error(
+          canUseVercelBlob()
+            ? `Falha ao gravar no Vercel Blob: ${detail}`
+            : `Upload na internet exige Vercel Blob conectado ao projeto. No painel Vercel: Storage → Blob → Connect to Project. (${detail})`
+        );
+      }
       throw new Error(`Falha ao gravar no Vercel Blob: ${detail}`);
     }
-  }
-
-  if (process.env.VERCEL) {
-    throw new Error(
-      "Armazenamento de imagens não configurado na Vercel. Adicione um Blob Store (Storage → Blob) ao projeto para gerar artes."
-    );
   }
 
   const uploadDir = path.join(process.cwd(), "public", "uploads", "instagram");
