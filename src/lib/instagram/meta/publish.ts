@@ -144,6 +144,13 @@ export async function publishSingleImagePost(
         code: meta.code,
         mode: config.mode,
         previousStatus: post.status,
+        imageUrlHost: (() => {
+          try {
+            return new URL(imageUrl).host;
+          } catch {
+            return null;
+          }
+        })(),
       },
       sanitized
     );

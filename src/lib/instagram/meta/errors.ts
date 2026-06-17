@@ -18,6 +18,11 @@ export function sanitizeMetaError(err: MetaGraphError): string {
   const parts = [err.message];
   if (err.code) parts.push(`code=${err.code}`);
   if (err.fbtrace_id) parts.push(`trace=${err.fbtrace_id}`);
+  if (err.code === 9004) {
+    parts.push(
+      "Dica: reenvie a foto (JPEG/PNG), aguarde o deploy e tente Publicar de novo — a imagem precisa ser HTTPS pública."
+    );
+  }
   return parts.join(" | ");
 }
 

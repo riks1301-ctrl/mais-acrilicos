@@ -1,4 +1,4 @@
-import { instagramBlobPathname, loadStorageBuffer, readBlobBuffer } from "@/lib/instagram/images/blob";
+import { instagramBlobPathname, loadStorageBuffer, metaImageBlobPathname, readBlobBuffer } from "@/lib/instagram/images/blob";
 import { verifyPublicMediaToken } from "@/lib/instagram/images/media-token";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
@@ -14,15 +14,23 @@ export async function GET(req: Request, { params }: { params: { imageId: string 
   }
 
   const image = await prisma.instagramImage.findUnique({ where: { id: params.imageId } });
-  if (!image?.storageKey) {
+  if (!image) {
     return NextResponse.json({ error: "Imagem não encontrada" }, { status: 404 });
   }
 
-  const buffer = (await readBlobBuffer(instagramBlobPathname(image.storageKey))) ?? (await loadStorageBuffer(image.storageKey));
+  const metaPath = metaImageBlobPathname(params.imageId);
+  let buffer = await readBlobBuffer(metaPath);
+  if (!buffer && image.storageKey) {
+    buffer =
+      (await readBlobBuffer(instagramBlobPathname(image.storageKey))) ?? (await loadStorageBuffer(image.storageKey));
+  }
+  if (!buffer) {
+    return NextResponse.json({ error: "Arquivo de imagem ausente" }, { status: 404 });
+  }
+
   const mime =
     (buffer[0] === 0xff && buffer[1] === 0xd8 ? "image/jpeg" : null) ??
     (buffer[0] === 0x89 ? "image/png" : null) ??
-    image.mimeType ??
     "image/jpeg";
 
   return new NextResponse(new Uint8Array(buffer), {

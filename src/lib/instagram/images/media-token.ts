@@ -22,7 +22,7 @@ export async function verifyPublicMediaToken(imageId: string, token: string): Pr
 }
 
 export async function publicMediaUrl(imageId: string): Promise<string> {
-  const { resolveSiteUrl } = await import("./blob");
+  const { resolvePublicSiteUrl } = await import("./blob");
   const token = await signPublicMediaToken(imageId);
-  return `${resolveSiteUrl()}/api/instagram/media/${imageId}?t=${encodeURIComponent(token)}`;
+  return `${resolvePublicSiteUrl()}/api/instagram/media/${imageId}?t=${encodeURIComponent(token)}`;
 }

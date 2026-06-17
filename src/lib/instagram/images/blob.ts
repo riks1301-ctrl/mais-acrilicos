@@ -44,6 +44,19 @@ export function resolveSiteUrl(): string {
   return "http://localhost:3000";
 }
 
+/** Domínio HTTPS que crawlers externos (Meta) conseguem alcançar. */
+export function resolvePublicSiteUrl(): string {
+  const prod = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  if (prod) return prod.startsWith("http") ? prod.replace(/\/$/, "") : `https://${prod}`;
+  const vercel = process.env.VERCEL_URL?.trim();
+  if (vercel) return `https://${vercel}`;
+  return resolveSiteUrl();
+}
+
+export function metaImageBlobPathname(imageId: string): string {
+  return `${BLOB_INSTAGRAM_PREFIX}/meta/${imageId}.jpg`;
+}
+
 export function adminBlobMediaUrl(storageKey: string): string {
   return `${resolveSiteUrl()}/api/admin/instagram/media/blob?key=${encodeURIComponent(storageKey)}`;
 }

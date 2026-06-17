@@ -1,5 +1,13 @@
 import type { InstagramImage } from "@prisma/client";
-import { canUseVercelBlob, instagramBlobPathname, isPrivateBlobUrl, putInstagramBlob, readBlobBuffer } from "@/lib/instagram/images/blob";
+import {
+  canUseVercelBlob,
+  instagramBlobPathname,
+  isPrivateBlobUrl,
+  loadStorageBuffer,
+  metaImageBlobPathname,
+  putInstagramBlob,
+  readBlobBuffer,
+} from "@/lib/instagram/images/blob";
 import { googleDriveDirectUrl } from "@/lib/instagram/images/drive";
 import { fetchImageBuffer } from "@/lib/instagram/images/fetch-buffer";
 import { publicMediaUrl } from "@/lib/instagram/images/media-token";
@@ -21,8 +29,8 @@ export function checkMetaImageUrl(url: string | null | undefined): MetaUrlCheck 
   if (url.includes("/api/admin/")) {
     return { ok: false, url, reason: "URL administrativa (exige login) — não serve para a Meta." };
   }
-  if (url.includes("/api/instagram/media/")) {
-    return { ok: true, url, reason: "URL pública assinada para publicação na Meta." };
+  if (url.includes("/api/instagram/media/") || url.includes(".blob.vercel-storage.com")) {
+    return { ok: true, url, reason: "URL pública para publicação na Meta." };
   }
   if (url.includes("drive.google.com") && !url.includes("uc?export=") && !url.includes("blob.vercel-storage.com")) {
     return { ok: false, url, reason: "Link do Drive precisa ser público ou use cópia temporária na publicação." };
@@ -33,7 +41,27 @@ export function checkMetaImageUrl(url: string | null | undefined): MetaUrlCheck 
   return { ok: true, url, reason: "URL HTTPS válida para tentativa de publicação." };
 }
 
+function detectImageMime(buffer: Buffer): string | null {
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return "image/jpeg";
+  if (buffer.length >= 4 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
+    return "image/png";
+  }
+  if (buffer.length >= 12 && buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP") {
+    return "image/webp";
+  }
+  return null;
+}
+
+async function toMetaJpeg(buffer: Buffer): Promise<Buffer> {
+  if (detectImageMime(buffer) === "image/jpeg") return buffer;
+  const sharp = (await import("sharp")).default;
+  return sharp(buffer).jpeg({ quality: 92 }).toBuffer();
+}
+
 async function loadImageBytes(image: InstagramImage): Promise<Buffer> {
+  const metaCopy = await readBlobBuffer(metaImageBlobPathname(image.id));
+  if (metaCopy) return metaCopy;
+
   if (image.storageKey && canUseVercelBlob()) {
     return loadStorageBuffer(image.storageKey);
   }
@@ -55,29 +83,30 @@ async function loadImageBytes(image: InstagramImage): Promise<Buffer> {
   return buf;
 }
 
-function detectImageMime(buffer: Buffer): string | null {
-  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return "image/jpeg";
-  if (buffer.length >= 4 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
-    return "image/png";
-  }
-  if (buffer.length >= 12 && buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP") {
-    return "image/webp";
-  }
-  return null;
-}
-
 async function verifyImageUrlForMeta(url: string): Promise<void> {
   const res = await fetch(url, { headers: { Accept: "image/*" }, redirect: "follow" });
   if (!res.ok) {
     throw new Error(`A Meta não consegue acessar a imagem (HTTP ${res.status}). Reenvie o upload ou tente de novo.`);
   }
+  const contentType = res.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json") || contentType.includes("text/html")) {
+    throw new Error("A URL da imagem retorna página/erro em vez de arquivo de imagem.");
+  }
   const buf = Buffer.from(await res.arrayBuffer());
-  if (!detectImageMime(buf)) {
-    throw new Error("A URL da imagem não retorna um arquivo JPEG/PNG/WebP válido para o Instagram.");
+  const mime = detectImageMime(buf);
+  if (!mime || mime === "image/webp") {
+    throw new Error("A URL da imagem não retorna JPEG/PNG válido para o Instagram.");
   }
 }
 
-/** Garante URL HTTPS pública para Meta — copia para Blob somente na publicação. */
+async function uploadMetaJpeg(imageId: string, jpeg: Buffer): Promise<string> {
+  const pathname = metaImageBlobPathname(imageId);
+  const blob = await putInstagramBlob(pathname, jpeg, "image/jpeg");
+  if (!isPrivateBlobUrl(blob.url)) return blob.url;
+  return publicMediaUrl(imageId);
+}
+
+/** Garante URL HTTPS pública (JPEG) para Meta — copia para Blob na publicação. */
 export async function ensureMetaPublishUrl(imageId: string): Promise<string> {
   const image = await prisma.instagramImage.findUnique({ where: { id: imageId } });
   if (!image) throw new Error("Imagem não encontrada.");
@@ -89,43 +118,23 @@ export async function ensureMetaPublishUrl(imageId: string): Promise<string> {
     });
   }
 
-  if (image.storageKey && canUseVercelBlob()) {
-    const buffer = await loadStorageBuffer(image.storageKey);
-    const mime = detectImageMime(buffer) ?? image.mimeType ?? "image/jpeg";
-    const pathname = instagramBlobPathname(image.storageKey);
-    const inBlob = await readBlobBuffer(pathname);
-    if (!inBlob) {
-      await putInstagramBlob(pathname, buffer, mime);
-    }
+  const raw = await loadImageBytes(image);
+  const jpeg = await toMetaJpeg(raw);
 
-    const signed = await publicMediaUrl(imageId);
-    await verifyImageUrlForMeta(signed);
+  if (canUseVercelBlob()) {
+    const publishUrl = await uploadMetaJpeg(imageId, jpeg);
+    await verifyImageUrlForMeta(publishUrl);
     await prisma.instagramImage.update({
       where: { id: imageId },
-      data: { metaPublishUrl: signed, metaPublishReady: true, mimeType: mime },
+      data: { metaPublishUrl: publishUrl, metaPublishReady: true, mimeType: "image/jpeg" },
     });
-    return signed;
+    return publishUrl;
   }
 
-  if (image.metaPublishUrl && image.metaPublishReady && checkMetaImageUrl(image.metaPublishUrl).ok) {
-    await verifyImageUrlForMeta(image.metaPublishUrl);
-    return image.metaPublishUrl;
-  }
-
-  const directCheck = checkMetaImageUrl(image.url);
-  if (directCheck.ok && image.sourceProvider === "upload" && !isPrivateBlobUrl(image.url)) {
-    await prisma.instagramImage.update({
-      where: { id: imageId },
-      data: { metaPublishUrl: image.url, metaPublishReady: true },
-    });
-    return image.url;
-  }
-
-  const buffer = await loadImageBytes(image);
-  const mime = image.mimeType ?? "image/jpeg";
-  const saved = await saveImageBuffer(buffer, mime, `meta-publish-${imageId}`);
-  const publishUrl = canUseVercelBlob() ? await publicMediaUrl(imageId) : saved.publicUrl;
-  if (canUseVercelBlob()) await verifyImageUrlForMeta(publishUrl);
+  const saved = await saveImageBuffer(jpeg, "image/jpeg", `meta-publish-${imageId}`);
+  const publishUrl = saved.publicUrl.startsWith("http")
+    ? saved.publicUrl
+    : `${process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "http://localhost:3000"}${saved.publicUrl}`;
 
   await prisma.instagramImage.update({
     where: { id: imageId },
@@ -134,6 +143,7 @@ export async function ensureMetaPublishUrl(imageId: string): Promise<string> {
       storageKey: saved.storageKey,
       metaPublishUrl: publishUrl,
       metaPublishReady: true,
+      mimeType: "image/jpeg",
     },
   });
 
