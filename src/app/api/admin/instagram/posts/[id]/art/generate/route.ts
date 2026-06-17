@@ -4,6 +4,7 @@ import {
   completeArtGeneration,
   failArtGeneration,
   recoverStaleArtGeneration,
+  removeGeneratedArtFromPost,
   resetArtGeneration,
   updateArtGenerationProgress,
 } from "@/lib/instagram/art/status";
@@ -30,8 +31,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const { generateCompleteArt } = await import("@/lib/instagram/art/generate");
 
     if (input.reset) {
+      if (input.removeGeneratedImages === true) {
+        const removed = await removeGeneratedArtFromPost(postId);
+        return NextResponse.json({ ok: true, artGenStatus: "IDLE", removedGeneratedImages: removed });
+      }
       await resetArtGeneration(postId);
-      return NextResponse.json({ ok: true, artGenStatus: "IDLE" });
+      return NextResponse.json({ ok: true, artGenStatus: "IDLE", removedGeneratedImages: 0 });
     }
 
     if (input.prepareOnly) {

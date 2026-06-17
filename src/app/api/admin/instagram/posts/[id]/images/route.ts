@@ -25,6 +25,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   try {
     const data = linkImageToPostSchema.parse(await req.json());
 
+    if (data.role === "cover") {
+      await prisma.instagramPostImage.updateMany({
+        where: { postId: params.id, role: "cover", imageId: { not: data.imageId } },
+        data: { role: "attachment" },
+      });
+    }
+
     const count = await prisma.instagramPostImage.count({ where: { postId: params.id } });
 
     const link = await prisma.instagramPostImage.upsert({

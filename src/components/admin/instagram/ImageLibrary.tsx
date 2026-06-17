@@ -53,7 +53,7 @@ export function ImageLibrary({ linkPostId }: Props) {
     const res = await fetch(`/api/admin/instagram/posts/${linkPostId}/images`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ imageId }),
+      body: JSON.stringify({ imageId, role: "cover", order: 0 }),
     });
     if (res.ok) {
       setMessage("Imagem vinculada ao post.");

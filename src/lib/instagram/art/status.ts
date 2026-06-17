@@ -99,6 +99,20 @@ export async function resetArtGeneration(postId: string) {
   });
 }
 
+/** Remove slides gerados automaticamente; mantém fotos reais vinculadas pelo usuário. */
+export async function removeGeneratedArtFromPost(postId: string) {
+  const links = await prisma.instagramPostImage.findMany({
+    where: { postId, role: { in: ["cover", "slide", "art"] } },
+    include: { image: { select: { isGenerated: true } } },
+  });
+  const generatedLinkIds = links.filter((l) => l.image.isGenerated).map((l) => l.id);
+  if (generatedLinkIds.length > 0) {
+    await prisma.instagramPostImage.deleteMany({ where: { id: { in: generatedLinkIds } } });
+  }
+  await resetArtGeneration(postId);
+  return generatedLinkIds.length;
+}
+
 export async function failArtGeneration(postId: string, message: string) {
   try {
     return await completeArtGeneration(postId, false, message);

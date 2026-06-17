@@ -7,6 +7,7 @@ export const generateArtSchema = z.object({
   prepareOnly: z.boolean().optional(),
   finalize: z.boolean().optional(),
   reset: z.boolean().optional(),
+  removeGeneratedImages: z.boolean().optional(),
 });
 
 export const exportArtSchema = z.object({

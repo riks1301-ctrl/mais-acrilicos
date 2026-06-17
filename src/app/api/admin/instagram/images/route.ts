@@ -20,6 +20,8 @@ export async function GET(req: Request) {
   const images = await prisma.instagramImage.findMany({
     where: {
       ...(brand ? { brandConfigId: brand.id } : {}),
+      sourceProvider: { notIn: ["google_drive", "local_dev"] },
+      isGenerated: false,
       ...(category ? { category } : {}),
       ...(status ? { status } : {}),
       ...(serviceId ? { serviceId } : {}),

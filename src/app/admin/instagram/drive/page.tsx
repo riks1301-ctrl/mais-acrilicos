@@ -1,5 +1,5 @@
-import { DrivePageClient } from "@/components/admin/instagram/DrivePageClient";
+import { redirect } from "next/navigation";
 
 export default function InstagramDrivePage() {
-  return <DrivePageClient />;
+  redirect("/admin/instagram/imagens");
 }

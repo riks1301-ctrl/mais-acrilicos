@@ -1,5 +1,4 @@
 import type { IgPostStatus, Prisma } from "@prisma/client";
-import { autoLinkSuggestedImages } from "@/lib/instagram/drive/auto-select";
 import { prisma } from "@/lib/prisma";
 import type { BrandContext, GeneratedIdea } from "@/lib/instagram/types";
 import type { FullGeneration } from "./generator";
@@ -22,8 +21,6 @@ export async function saveIdeaAsPost(brand: BrandContext, idea: GeneratedIdea, s
     },
   });
   await logPublication(post.id, "idea_created", { contentType: idea.contentType, format: idea.format });
-
-  await autoLinkSuggestedImages(post.id, brand.id, idea.title, idea.idea).catch(() => null);
 
   return post;
 }
@@ -66,11 +63,6 @@ export async function saveFullGeneration(postId: string, gen: FullGeneration) {
     sells: gen.critique.sells,
     status: newStatus,
   });
-
-  const postForImages = await prisma.instagramPost.findUnique({ where: { id: postId }, select: { title: true, idea: true, brandConfigId: true } });
-  if (postForImages) {
-    await autoLinkSuggestedImages(postId, postForImages.brandConfigId, postForImages.title, postForImages.idea).catch(() => null);
-  }
 
   return post;
 }

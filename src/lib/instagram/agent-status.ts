@@ -43,7 +43,9 @@ export async function getAgentStatus(): Promise<AgentStatus> {
       brandId ? prisma.instagramPost.count({ where: { brandConfigId: brandId, status: "PENDING_APPROVAL" } }) : 0,
       brandId ? prisma.instagramPost.count({ where: { brandConfigId: brandId, status: "SCHEDULED" } }) : 0,
       brandId ? prisma.instagramPost.count({ where: { brandConfigId: brandId, status: "PUBLISHED" } }) : 0,
-      brandId ? prisma.instagramImage.count({ where: { brandConfigId: brandId, status: "AVAILABLE" } }) : 0,
+      brandId ? prisma.instagramImage.count({
+        where: { brandConfigId: brandId, status: "AVAILABLE", sourceProvider: { notIn: ["google_drive", "local_dev"] } },
+      }) : 0,
       brandId
         ? prisma.instagramPost.count({ where: { brandConfigId: brandId, status: "PUBLISHED", instagramMediaId: { not: null } } })
         : 0,

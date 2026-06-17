@@ -3,11 +3,10 @@
 import { ImageLibrary } from "@/components/admin/instagram/ImageLibrary";
 import { MetaPublishPanel } from "@/components/admin/instagram/MetaPublishPanel";
 import { PostPerformancePanel } from "@/components/admin/instagram/PostPerformancePanel";
-import { PostArtPanel } from "@/components/admin/instagram/PostArtPanel";
 import { PostCarouselPanel } from "@/components/admin/instagram/PostCarouselPanel";
 import { PostVisualPanel } from "@/components/admin/instagram/PostVisualPanel";
 import { ContentTypeBadge, FormatBadge, ScoreBadge, StatusBadge } from "@/components/admin/instagram/StatusBadge";
-import type { IgContentType, IgImageType, IgPostFormat, IgPostStatus, IgVisualSource, InstagramCaption, InstagramImagePrompt } from "@prisma/client";
+import type { IgContentType, IgImageType, IgPostFormat, IgPostStatus, IgVisualSource, InstagramCaption } from "@prisma/client";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -43,12 +42,7 @@ type Post = {
   critiqueNotes: string | null;
   visualSource: IgVisualSource | null;
   visualFormat: string | null;
-  artGenStatus: import("@prisma/client").IgArtGenStatus;
-  artGenError: string | null;
-  artGenProgress: number;
-  artGenTotal: number;
   captions: InstagramCaption[];
-  imagePrompts: InstagramImagePrompt[];
   postImages: PostImage[];
   carousel: Carousel | null;
   publicationChannel: string | null;
@@ -165,9 +159,9 @@ export function PostDetail({ id }: { id: string }) {
 
       <PostVisualPanel
         postId={id}
+        postFormat={post.format}
         visualSource={post.visualSource}
         visualFormat={post.visualFormat}
-        imagePrompts={post.imagePrompts}
         postImages={post.postImages}
         onRefresh={load}
       />
@@ -184,28 +178,6 @@ export function PostDetail({ id }: { id: string }) {
       </div>
 
       <PostCarouselPanel postId={id} initialCarousel={post.carousel} onRefresh={load} />
-
-      <PostArtPanel
-        postId={id}
-        visualFormat={post.visualFormat}
-        artGen={{
-          artGenStatus: post.artGenStatus,
-          artGenError: post.artGenError,
-          artGenProgress: post.artGenProgress,
-          artGenTotal: post.artGenTotal,
-        }}
-        artFiles={post.postImages
-          .filter((pi) => ["cover", "slide", "art"].includes(pi.role))
-          .map((pi) => ({
-            imageId: pi.image.id,
-            url: pi.image.url,
-            role: pi.role,
-            order: pi.order,
-            format: post.visualFormat ?? "1080x1080",
-            source: (pi.image as { isRealPhoto?: boolean }).isRealPhoto ? "real_photo" : "brand_template",
-          }))}
-        onRefresh={load}
-      />
 
       {post.status === "PUBLISHED" && <PostPerformancePanel postId={id} status={post.status} />}
 
