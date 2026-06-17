@@ -1,5 +1,5 @@
 import type { InstagramImage } from "@prisma/client";
-import { canUseVercelBlob, isPrivateBlobUrl } from "@/lib/instagram/images/blob";
+import { canUseVercelBlob, instagramBlobPathname, isPrivateBlobUrl, putInstagramBlob, readBlobBuffer } from "@/lib/instagram/images/blob";
 import { googleDriveDirectUrl } from "@/lib/instagram/images/drive";
 import { fetchImageBuffer } from "@/lib/instagram/images/fetch-buffer";
 import { publicMediaUrl } from "@/lib/instagram/images/media-token";
@@ -34,6 +34,10 @@ export function checkMetaImageUrl(url: string | null | undefined): MetaUrlCheck 
 }
 
 async function loadImageBytes(image: InstagramImage): Promise<Buffer> {
+  if (image.storageKey && canUseVercelBlob()) {
+    return loadStorageBuffer(image.storageKey);
+  }
+
   if (image.sourceProvider === "local_dev" && image.localPath) {
     const root = process.env.GOOGLE_DRIVE_LOCAL_PATH;
     if (!root || !isPathInsideRoot(image.localPath, root)) {
@@ -51,23 +55,61 @@ async function loadImageBytes(image: InstagramImage): Promise<Buffer> {
   return buf;
 }
 
+function detectImageMime(buffer: Buffer): string | null {
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return "image/jpeg";
+  if (buffer.length >= 4 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
+    return "image/png";
+  }
+  if (buffer.length >= 12 && buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP") {
+    return "image/webp";
+  }
+  return null;
+}
+
+async function verifyImageUrlForMeta(url: string): Promise<void> {
+  const res = await fetch(url, { headers: { Accept: "image/*" }, redirect: "follow" });
+  if (!res.ok) {
+    throw new Error(`A Meta não consegue acessar a imagem (HTTP ${res.status}). Reenvie o upload ou tente de novo.`);
+  }
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (!detectImageMime(buf)) {
+    throw new Error("A URL da imagem não retorna um arquivo JPEG/PNG/WebP válido para o Instagram.");
+  }
+}
+
 /** Garante URL HTTPS pública para Meta — copia para Blob somente na publicação. */
 export async function ensureMetaPublishUrl(imageId: string): Promise<string> {
   const image = await prisma.instagramImage.findUnique({ where: { id: imageId } });
   if (!image) throw new Error("Imagem não encontrada.");
 
-  if (image.metaPublishUrl && image.metaPublishReady) {
-    const check = checkMetaImageUrl(image.metaPublishUrl);
-    if (check.ok) return image.metaPublishUrl;
+  if (image.metaPublishUrl && !checkMetaImageUrl(image.metaPublishUrl).ok) {
+    await prisma.instagramImage.update({
+      where: { id: imageId },
+      data: { metaPublishUrl: null, metaPublishReady: false },
+    });
   }
 
   if (image.storageKey && canUseVercelBlob()) {
+    const buffer = await loadStorageBuffer(image.storageKey);
+    const mime = detectImageMime(buffer) ?? image.mimeType ?? "image/jpeg";
+    const pathname = instagramBlobPathname(image.storageKey);
+    const inBlob = await readBlobBuffer(pathname);
+    if (!inBlob) {
+      await putInstagramBlob(pathname, buffer, mime);
+    }
+
     const signed = await publicMediaUrl(imageId);
+    await verifyImageUrlForMeta(signed);
     await prisma.instagramImage.update({
       where: { id: imageId },
-      data: { metaPublishUrl: signed, metaPublishReady: true },
+      data: { metaPublishUrl: signed, metaPublishReady: true, mimeType: mime },
     });
     return signed;
+  }
+
+  if (image.metaPublishUrl && image.metaPublishReady && checkMetaImageUrl(image.metaPublishUrl).ok) {
+    await verifyImageUrlForMeta(image.metaPublishUrl);
+    return image.metaPublishUrl;
   }
 
   const directCheck = checkMetaImageUrl(image.url);
@@ -83,6 +125,7 @@ export async function ensureMetaPublishUrl(imageId: string): Promise<string> {
   const mime = image.mimeType ?? "image/jpeg";
   const saved = await saveImageBuffer(buffer, mime, `meta-publish-${imageId}`);
   const publishUrl = canUseVercelBlob() ? await publicMediaUrl(imageId) : saved.publicUrl;
+  if (canUseVercelBlob()) await verifyImageUrlForMeta(publishUrl);
 
   await prisma.instagramImage.update({
     where: { id: imageId },

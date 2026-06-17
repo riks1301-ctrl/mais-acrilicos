@@ -1,4 +1,4 @@
-import { instagramBlobPathname, readBlobBuffer } from "@/lib/instagram/images/blob";
+import { instagramBlobPathname, loadStorageBuffer, readBlobBuffer } from "@/lib/instagram/images/blob";
 import { verifyPublicMediaToken } from "@/lib/instagram/images/media-token";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
@@ -18,14 +18,16 @@ export async function GET(req: Request, { params }: { params: { imageId: string 
     return NextResponse.json({ error: "Imagem não encontrada" }, { status: 404 });
   }
 
-  const buffer = await readBlobBuffer(instagramBlobPathname(image.storageKey), "private");
-  if (!buffer) {
-    return NextResponse.json({ error: "Arquivo não encontrado" }, { status: 404 });
-  }
+  const buffer = (await readBlobBuffer(instagramBlobPathname(image.storageKey))) ?? (await loadStorageBuffer(image.storageKey));
+  const mime =
+    (buffer[0] === 0xff && buffer[1] === 0xd8 ? "image/jpeg" : null) ??
+    (buffer[0] === 0x89 ? "image/png" : null) ??
+    image.mimeType ??
+    "image/jpeg";
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
-      "Content-Type": image.mimeType ?? "image/png",
+      "Content-Type": mime,
       "Cache-Control": "public, max-age=3600",
     },
   });

@@ -63,10 +63,15 @@ async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Buffe
   return Buffer.concat(chunks);
 }
 
-export async function readBlobBuffer(pathname: string, access: "public" | "private" = blobAccessMode()): Promise<Buffer | null> {
-  const result = await get(pathname, { access, ...blobStoreOptions() });
-  if (!result || result.statusCode !== 200 || !result.stream) return null;
-  return streamToBuffer(result.stream);
+export async function readBlobBuffer(pathname: string, access?: "public" | "private"): Promise<Buffer | null> {
+  const modes: Array<"public" | "private"> = access ? [access] : ["private", "public"];
+  for (const mode of modes) {
+    const result = await get(pathname, { access: mode, ...blobStoreOptions() });
+    if (result?.statusCode === 200 && result.stream) {
+      return streamToBuffer(result.stream);
+    }
+  }
+  return null;
 }
 
 export async function loadStorageBuffer(storageKey: string): Promise<Buffer> {

@@ -81,7 +81,7 @@ export async function publishSingleImagePost(
 
   await prisma.instagramPost.update({
     where: { id: postId },
-    data: { metaLastPublishAttempt: new Date(), metaPublishMode: config.mode.toLowerCase() },
+    data: { metaLastPublishAttempt: new Date(), metaPublishMode: config.mode.toLowerCase(), metaPublishError: null },
   });
 
   if (config.mode === "TEST") {
