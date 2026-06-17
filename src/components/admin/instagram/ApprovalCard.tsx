@@ -52,6 +52,7 @@ export function ApprovalCard({ item, onRefresh }: Props) {
   const [adjustNotes, setAdjustNotes] = useState("");
   const [publishNotes, setPublishNotes] = useState("");
   const [showReject, setShowReject] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
   const [showAdjust, setShowAdjust] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -141,6 +142,20 @@ export function ApprovalCard({ item, onRefresh }: Props) {
     onRefresh();
   }
 
+  async function deletePost() {
+    setLoading(true);
+    const res = await fetch(`/api/admin/instagram/posts/${item.id}`, { method: "DELETE" });
+    setLoading(false);
+    if (!res.ok) {
+      setMessage((await res.json()).error ?? "Não foi possível excluir.");
+      return;
+    }
+    setShowDelete(false);
+    onRefresh();
+  }
+
+  const discardLabel = item.status === "APPROVED" || item.status === "SCHEDULED" ? "Descartar" : "Reprovar";
+
   const personaLabel = item.contentType ? IG_CONTENT_TYPE_LABELS[item.contentType] : "Geral";
 
   return (
@@ -221,6 +236,12 @@ export function ApprovalCard({ item, onRefresh }: Props) {
             <button type="button" onClick={() => setShowPublish(true)} className="rounded-xl bg-brand-600 px-3 py-2 text-xs font-semibold text-white">
               Marcar publicado manualmente
             </button>
+            <button type="button" onClick={() => setShowReject(true)} className="rounded-xl border border-red-200 px-3 py-2 text-xs font-semibold text-red-700">
+              Descartar
+            </button>
+            <button type="button" onClick={() => setShowDelete(true)} className="rounded-xl border border-red-300 px-3 py-2 text-xs font-semibold text-red-800">
+              Excluir
+            </button>
           </>
         )}
         <Link href={`/admin/instagram/posts/${item.id}`} className="rounded-xl border px-3 py-2 text-xs font-semibold text-slate-600">
@@ -277,9 +298,27 @@ export function ApprovalCard({ item, onRefresh }: Props) {
       )}
 
       {showReject && (
-        <Modal title="Reprovar post" onClose={() => setShowReject(false)}>
-          <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={4} className="w-full rounded-xl border p-3 text-sm" placeholder="Motivo obrigatório..." />
-          <button type="button" onClick={reject} disabled={loading} className="mt-3 rounded-xl bg-red-600 px-4 py-2 text-sm text-white">Confirmar reprovação</button>
+        <Modal title={discardLabel === "Descartar" ? "Descartar post" : "Reprovar post"} onClose={() => setShowReject(false)}>
+          <p className="text-sm text-slate-600">
+            {discardLabel === "Descartar"
+              ? "O post sai da fila de aprovados e vai para Reprovados. Não será publicado automaticamente."
+              : "Informe o motivo da reprovação."}
+          </p>
+          <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={4} className="mt-2 w-full rounded-xl border p-3 text-sm" placeholder="Motivo (mínimo 10 caracteres)..." />
+          <button type="button" onClick={reject} disabled={loading} className="mt-3 rounded-xl bg-red-600 px-4 py-2 text-sm text-white">
+            {discardLabel === "Descartar" ? "Confirmar descarte" : "Confirmar reprovação"}
+          </button>
+        </Modal>
+      )}
+
+      {showDelete && (
+        <Modal title="Excluir post" onClose={() => setShowDelete(false)}>
+          <p className="text-sm text-slate-600">
+            Remove o post do sistema de forma permanente. Esta ação não despublica no Instagram se já tiver sido publicado lá.
+          </p>
+          <button type="button" onClick={deletePost} disabled={loading} className="mt-3 rounded-xl bg-red-700 px-4 py-2 text-sm text-white">
+            Excluir permanentemente
+          </button>
         </Modal>
       )}
 

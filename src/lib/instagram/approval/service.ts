@@ -71,6 +71,9 @@ export async function rejectPost(postId: string, adminId: string, reason: string
       rejectionReason: reason,
       approvedAt: null,
       approvedByAdminId: null,
+      scheduledFor: null,
+      publicationChannel: null,
+      publicationNotes: null,
     },
     include: postInclude,
   });
