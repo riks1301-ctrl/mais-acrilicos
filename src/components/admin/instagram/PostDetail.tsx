@@ -2,12 +2,14 @@
 
 import { ImageLibrary } from "@/components/admin/instagram/ImageLibrary";
 import { MetaPublishPanel } from "@/components/admin/instagram/MetaPublishPanel";
+import { PostDiscardActions } from "@/components/admin/instagram/PostDiscardActions";
 import { PostPerformancePanel } from "@/components/admin/instagram/PostPerformancePanel";
 import { PostCarouselPanel } from "@/components/admin/instagram/PostCarouselPanel";
 import { PostVisualPanel } from "@/components/admin/instagram/PostVisualPanel";
 import { ContentTypeBadge, FormatBadge, ScoreBadge, StatusBadge } from "@/components/admin/instagram/StatusBadge";
 import type { IgContentType, IgImageType, IgPostFormat, IgPostStatus, IgVisualSource, InstagramCaption } from "@prisma/client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 type PostImage = {
@@ -58,6 +60,7 @@ function parseScore(notes: string | null): number | null {
 }
 
 export function PostDetail({ id }: { id: string }) {
+  const router = useRouter();
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -156,6 +159,17 @@ export function PostDetail({ id }: { id: string }) {
           </div>
         </div>
       </div>
+
+      {(post.status === "APPROVED" || post.status === "SCHEDULED") && (
+        <PostDiscardActions
+          postId={id}
+          status={post.status}
+          onDone={() => {
+            load();
+            router.push("/admin/instagram/aprovacao");
+          }}
+        />
+      )}
 
       <PostVisualPanel
         postId={id}
