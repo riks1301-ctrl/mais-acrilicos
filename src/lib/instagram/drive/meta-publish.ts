@@ -18,6 +18,9 @@ export type MetaUrlCheck = {
 export function checkMetaImageUrl(url: string | null | undefined): MetaUrlCheck {
   if (!url) return { ok: false, url: null, reason: "URL ausente." };
   if (!url.startsWith("https://")) return { ok: false, url, reason: "A Meta exige URL HTTPS pública." };
+  if (url.includes("/api/admin/")) {
+    return { ok: false, url, reason: "URL administrativa (exige login) — não serve para a Meta." };
+  }
   if (url.includes("/api/instagram/media/")) {
     return { ok: true, url, reason: "URL pública assinada para publicação na Meta." };
   }
@@ -58,15 +61,6 @@ export async function ensureMetaPublishUrl(imageId: string): Promise<string> {
     if (check.ok) return image.metaPublishUrl;
   }
 
-  const directCheck = checkMetaImageUrl(image.url);
-  if (directCheck.ok && image.sourceProvider === "upload" && !isPrivateBlobUrl(image.url)) {
-    await prisma.instagramImage.update({
-      where: { id: imageId },
-      data: { metaPublishUrl: image.url, metaPublishReady: true },
-    });
-    return image.url;
-  }
-
   if (image.storageKey && canUseVercelBlob()) {
     const signed = await publicMediaUrl(imageId);
     await prisma.instagramImage.update({
@@ -74,6 +68,15 @@ export async function ensureMetaPublishUrl(imageId: string): Promise<string> {
       data: { metaPublishUrl: signed, metaPublishReady: true },
     });
     return signed;
+  }
+
+  const directCheck = checkMetaImageUrl(image.url);
+  if (directCheck.ok && image.sourceProvider === "upload" && !isPrivateBlobUrl(image.url)) {
+    await prisma.instagramImage.update({
+      where: { id: imageId },
+      data: { metaPublishUrl: image.url, metaPublishReady: true },
+    });
+    return image.url;
   }
 
   const buffer = await loadImageBytes(image);

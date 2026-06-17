@@ -38,8 +38,9 @@ export function isPrivateBlobUrl(url: string): boolean {
 
 export function resolveSiteUrl(): string {
   const site = process.env.NEXT_PUBLIC_SITE_URL;
-  if (site) return site.replace(/\/$/, "");
+  if (site && !site.includes("localhost")) return site.replace(/\/$/, "");
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  if (site) return site.replace(/\/$/, "");
   return "http://localhost:3000";
 }
 
